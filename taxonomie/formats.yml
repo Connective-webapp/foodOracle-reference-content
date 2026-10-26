@@ -1,0 +1,39 @@
+nom: "formats"
+libelle: "Formats d'article"
+valeurs:
+  - slug: "breve"
+    libelle: "Brève"
+    parent: null
+    description: "Information datée et sourcée, de 80 à 200 mots."
+  - slug: "actualite"
+    libelle: "Actualité"
+    parent: null
+    description: "Fait nouveau replacé dans son contexte, de 300 à 600 mots."
+  - slug: "analyse"
+    libelle: "Analyse"
+    parent: null
+    description: "Explication appuyée sur des données, de 800 à 1 200 mots."
+  - slug: "dossier"
+    libelle: "Dossier"
+    parent: null
+    description: "Traitement long avec sommaire et sections, de 2 000 à 4 000 mots."
+  - slug: "interview"
+    libelle: "Interview"
+    parent: null
+    description: "Questions et réponses ou verbatim, de 600 à 1 000 mots."
+  - slug: "portrait"
+    libelle: "Portrait"
+    parent: null
+    description: "Présentation d'une personne ou d'une entreprise, de 500 à 900 mots."
+  - slug: "chiffres-cles"
+    libelle: "Chiffres clés"
+    parent: null
+    description: "Tableau ou graphique commenté avec une source datée, de 150 à 400 mots."
+  - slug: "guide-pratique"
+    libelle: "Guide pratique"
+    parent: null
+    description: "Étapes numérotées pour agir, de 1 000 à 2 000 mots."
+  - slug: "tribune"
+    libelle: "Tribune"
+    parent: null
+    description: "Opinion signée par un auteur identifié, de 600 à 900 mots."

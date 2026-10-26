@@ -1,0 +1,43 @@
+nom: "types-de-plat"
+libelle: "Types de plat"
+valeurs:
+  - slug: "entree"
+    libelle: "Entrée"
+    parent: null
+    description: "Premier plat d'un repas, servi avant le plat principal."
+  - slug: "plat"
+    libelle: "Plat"
+    parent: null
+    description: "Plat principal d'un repas."
+  - slug: "garniture"
+    libelle: "Garniture"
+    parent: null
+    description: "Accompagnement qui complète un plat principal."
+  - slug: "sauce"
+    libelle: "Sauce"
+    parent: null
+    description: "Préparation liquide ou liée servie avec un plat."
+  - slug: "dessert"
+    libelle: "Dessert"
+    parent: null
+    description: "Préparation sucrée servie en fin de repas."
+  - slug: "fond"
+    libelle: "Fond"
+    parent: null
+    description: "Base liquide obtenue par cuisson prolongée d'os ou de légumes."
+  - slug: "base"
+    libelle: "Base"
+    parent: null
+    description: "Préparation de référence réutilisée dans d'autres recettes."
+  - slug: "amuse-bouche"
+    libelle: "Amuse-bouche"
+    parent: null
+    description: "Bouchée offerte en début de repas, hors carte."
+  - slug: "petit-dejeuner"
+    libelle: "Petit-déjeuner"
+    parent: null
+    description: "Repas du matin, sucré ou salé."
+  - slug: "boisson"
+    libelle: "Boisson"
+    parent: null
+    description: "Préparation à boire, chaude, froide ou alcoolisée."

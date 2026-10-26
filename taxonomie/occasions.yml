@@ -1,0 +1,43 @@
+nom: "occasions"
+libelle: "Occasions de service"
+valeurs:
+  - slug: "service-du-midi"
+    libelle: "Service du midi"
+    parent: null
+    description: "Plat pensé pour un déjeuner rapide ou un menu du jour."
+  - slug: "service-du-soir"
+    libelle: "Service du soir"
+    parent: null
+    description: "Plat pensé pour un dîner ou une carte du soir."
+  - slug: "banquet"
+    libelle: "Banquet"
+    parent: null
+    description: "Plat adapté à un service en grande quantité."
+  - slug: "brunch"
+    libelle: "Brunch"
+    parent: null
+    description: "Repas mêlant petit-déjeuner et déjeuner, souvent le week-end."
+  - slug: "buffet"
+    libelle: "Buffet"
+    parent: null
+    description: "Préparation présentée en libre-service ou en plats froids."
+  - slug: "fetes-de-fin-d-annee"
+    libelle: "Fêtes de fin d'année"
+    parent: null
+    description: "Préparation de réveillon, de Noël ou du Nouvel An."
+  - slug: "gouter"
+    libelle: "Goûter"
+    parent: null
+    description: "Préparation servie en milieu d'après-midi."
+  - slug: "apero-dinatoire"
+    libelle: "Apéro dînatoire"
+    parent: null
+    description: "Bouchées et petites pièces servies debout."
+  - slug: "mariage"
+    libelle: "Mariage"
+    parent: null
+    description: "Plat ou pièce montée pour une réception de mariage."
+  - slug: "repas-de-famille"
+    libelle: "Repas de famille"
+    parent: null
+    description: "Plat de partage destiné à un repas familial."

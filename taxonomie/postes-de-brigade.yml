@@ -1,0 +1,43 @@
+nom: "postes-de-brigade"
+libelle: "Postes de la brigade"
+valeurs:
+  - slug: "entree"
+    libelle: "Entrée"
+    parent: null
+    description: "Poste qui prépare les entrées froides et chaudes."
+  - slug: "plat"
+    libelle: "Plat"
+    parent: null
+    description: "Poste qui dresse les plats principaux."
+  - slug: "dessert"
+    libelle: "Dessert"
+    parent: null
+    description: "Poste qui prépare les desserts du service."
+  - slug: "garde-manger"
+    libelle: "Garde-manger"
+    parent: null
+    description: "Poste des préparations froides, pâtés, terrines et salades."
+  - slug: "saucier"
+    libelle: "Saucier"
+    parent: null
+    description: "Poste des sauces, fonds et jus de cuisson."
+  - slug: "poissonnier"
+    libelle: "Poissonnier"
+    parent: null
+    description: "Poste de préparation et de cuisson des poissons et crustacés."
+  - slug: "rotisseur"
+    libelle: "Rôtisseur"
+    parent: null
+    description: "Poste des grillades, rôtis et fritures."
+  - slug: "entremetier"
+    libelle: "Entremétier"
+    parent: null
+    description: "Poste des légumes, féculents, œufs et potages."
+  - slug: "patissier"
+    libelle: "Pâtissier"
+    parent: null
+    description: "Poste de la pâtisserie et des entremets."
+  - slug: "tournant"
+    libelle: "Tournant"
+    parent: null
+    description: "Cuisinier qui remplace les postes selon les besoins du service."

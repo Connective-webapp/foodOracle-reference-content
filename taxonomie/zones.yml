@@ -1,0 +1,15 @@
+nom: "zones"
+libelle: "Zones géographiques"
+valeurs:
+  - slug: "france"
+    libelle: "France"
+    parent: null
+    description: "Actualité qui concerne principalement la France."
+  - slug: "europe"
+    libelle: "Europe"
+    parent: null
+    description: "Actualité qui concerne principalement l'Union européenne ou l'Europe."
+  - slug: "monde"
+    libelle: "Monde"
+    parent: null
+    description: "Actualité internationale hors d'Europe ou à portée mondiale."

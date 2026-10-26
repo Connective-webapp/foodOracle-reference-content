@@ -1,0 +1,23 @@
+nom: "univers"
+libelle: "Univers du média"
+valeurs:
+  - slug: "cuisine"
+    libelle: "Cuisine"
+    parent: null
+    description: "Recettes salées et techniques de la cuisine de tous les jours et de la brigade."
+  - slug: "patisserie"
+    libelle: "Pâtisserie"
+    parent: null
+    description: "Recettes sucrées, entremets, crèmes et décors."
+  - slug: "boulangerie"
+    libelle: "Boulangerie"
+    parent: null
+    description: "Pains, levains, pâtes levées et viennoiseries."
+  - slug: "bar"
+    libelle: "Bar"
+    parent: null
+    description: "Cocktails et boissons préparées au bar, avec ou sans alcool."
+  - slug: "sans-alcool"
+    libelle: "Sans alcool"
+    parent: null
+    description: "Boissons et préparations sans alcool, mocktails et infusions."

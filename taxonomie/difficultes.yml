@@ -1,0 +1,15 @@
+nom: "difficultes"
+libelle: "Niveaux de difficulté"
+valeurs:
+  - slug: "debutant"
+    libelle: "Débutant"
+    parent: null
+    description: "Recette accessible sans expérience, avec peu de gestes techniques."
+  - slug: "confirme"
+    libelle: "Confirmé"
+    parent: null
+    description: "Recette demandant de la pratique et une bonne maîtrise des cuissons."
+  - slug: "expert"
+    libelle: "Expert"
+    parent: null
+    description: "Recette technique réservée à une cuisine professionnelle ou à un cuisinier aguerri."

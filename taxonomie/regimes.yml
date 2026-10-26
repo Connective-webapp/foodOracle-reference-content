@@ -1,0 +1,31 @@
+nom: "regimes"
+libelle: "Régimes alimentaires"
+valeurs:
+  - slug: "vegetarien"
+    libelle: "Végétarien"
+    parent: null
+    description: "Recette sans viande ni poisson."
+  - slug: "vegan"
+    libelle: "Végan"
+    parent: null
+    description: "Recette sans aucun produit d'origine animale."
+  - slug: "sans-gluten"
+    libelle: "Sans gluten"
+    parent: null
+    description: "Recette sans blé, seigle, orge ni avoine."
+  - slug: "sans-lactose"
+    libelle: "Sans lactose"
+    parent: null
+    description: "Recette sans lait ni dérivés laitiers contenant du lactose."
+  - slug: "sans-oeuf"
+    libelle: "Sans œuf"
+    parent: null
+    description: "Recette sans œuf ni produit en contenant."
+  - slug: "sans-porc"
+    libelle: "Sans porc"
+    parent: null
+    description: "Recette sans porc ni produit dérivé du porc."
+  - slug: "pauvre-en-sel"
+    libelle: "Pauvre en sel"
+    parent: null
+    description: "Recette dont la teneur en sel est volontairement réduite."

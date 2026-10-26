@@ -1,0 +1,163 @@
+nom: "techniques"
+libelle: "Techniques majeures"
+valeurs:
+  - slug: "blanchir"
+    libelle: "Blanchir"
+    parent: null
+    description: "Plonger brièvement un produit dans l'eau bouillante puis le refroidir."
+  - slug: "braiser"
+    libelle: "Braiser"
+    parent: null
+    description: "Cuire lentement une pièce saisie dans un fond à couvert."
+  - slug: "brider"
+    libelle: "Brider"
+    parent: null
+    description: "Lier une volaille ou une pièce de viande pour une cuisson régulière."
+  - slug: "carameliser"
+    libelle: "Caraméliser"
+    parent: null
+    description: "Chauffer un sucre ou un produit jusqu'à obtenir une coloration dorée."
+  - slug: "chinoiser"
+    libelle: "Chinoiser"
+    parent: null
+    description: "Filtrer une préparation liquide à travers un chinois fin."
+  - slug: "clarifier"
+    libelle: "Clarifier"
+    parent: null
+    description: "Éliminer les impuretés d'un bouillon, d'un beurre ou d'un sucre."
+  - slug: "concasser"
+    libelle: "Concasser"
+    parent: null
+    description: "Broyer grossièrement des graines, des épices ou des fruits secs."
+  - slug: "confire"
+    libelle: "Confire"
+    parent: null
+    description: "Conserver un produit dans un corps gras ou dans du sucre."
+  - slug: "cuire-a-la-vapeur"
+    libelle: "Cuire à la vapeur"
+    parent: null
+    description: "Cuire un produit au contact de la vapeur sans liquide."
+  - slug: "deglacer"
+    libelle: "Déglacer"
+    parent: null
+    description: "Dissoudre les sucs de cuisson dans un liquide chaud."
+  - slug: "desosser"
+    libelle: "Désosser"
+    parent: null
+    description: "Retirer les os d'une pièce de viande, de volaille ou de poisson."
+  - slug: "dorer"
+    libelle: "Dorer"
+    parent: null
+    description: "Colorer la surface d'une pâte ou d'une pièce par un badigeon."
+  - slug: "emincer"
+    libelle: "Émincer"
+    parent: null
+    description: "Couper un produit en fines lamelles régulières."
+  - slug: "emulsionner"
+    libelle: "Émulsionner"
+    parent: null
+    description: "Lier deux phases non miscibles pour obtenir une préparation homogène."
+  - slug: "etuver"
+    libelle: "Étuver"
+    parent: null
+    description: "Cuire à couvert dans un corps gras et un peu de liquide."
+  - slug: "faire-revenir"
+    libelle: "Faire revenir"
+    parent: null
+    description: "Saisir légèrement un produit dans un corps gras pour le colorer."
+  - slug: "flamber"
+    libelle: "Flamber"
+    parent: null
+    description: "Enflammer l'alcool d'une préparation pour la parfumer."
+  - slug: "foncer"
+    libelle: "Foncer"
+    parent: null
+    description: "Garnir un moule ou une casserole d'une couche de pâte ou de lard."
+  - slug: "frire"
+    libelle: "Frire"
+    parent: null
+    description: "Plonger un produit dans un bain de graisse très chaud."
+  - slug: "glacer"
+    libelle: "Glacer"
+    parent: null
+    description: "Recouvrir un produit d'une fine couche brillante de sucre ou de fond réduit."
+  - slug: "gratiner"
+    libelle: "Gratiner"
+    parent: null
+    description: "Colorer la surface d'un plat au four ou sous la salamandre."
+  - slug: "griller"
+    libelle: "Griller"
+    parent: null
+    description: "Cuire un produit sur une source de chaleur directe."
+  - slug: "hacher"
+    libelle: "Hacher"
+    parent: null
+    description: "Réduire un produit en petits morceaux irréguliers au couteau ou au hachoir."
+  - slug: "ciseler"
+    libelle: "Ciseler"
+    parent: null
+    description: "Couper des herbes ou des aromates en fines lanières."
+  - slug: "tailler-en-julienne"
+    libelle: "Tailler en julienne"
+    parent: null
+    description: "Couper un légume en fins bâtonnets réguliers."
+  - slug: "lier"
+    libelle: "Lier"
+    parent: null
+    description: "Épaissir une préparation avec un liant comme l'œuf ou la fécule."
+  - slug: "macerer"
+    libelle: "Macérer"
+    parent: null
+    description: "Laisser un produit tremper dans un liquide pour l'aromatiser."
+  - slug: "mariner"
+    libelle: "Mariner"
+    parent: null
+    description: "Faire tremper une viande ou un poisson dans une préparation aromatique."
+  - slug: "monter-les-blancs"
+    libelle: "Monter les blancs"
+    parent: null
+    description: "Battre des blancs d'œufs en neige ferme."
+  - slug: "mijoter"
+    libelle: "Mijoter"
+    parent: null
+    description: "Cuire doucement à frémissement pendant une longue durée."
+  - slug: "pocher"
+    libelle: "Pocher"
+    parent: null
+    description: "Cuire un produit doucement dans un liquide sans ébullition."
+  - slug: "rissoler"
+    libelle: "Rissoler"
+    parent: null
+    description: "Colorer un produit à feu vif dans un corps gras."
+  - slug: "rotir"
+    libelle: "Rôtir"
+    parent: null
+    description: "Cuire une pièce entière au four en l'arrosant de son jus."
+  - slug: "saisir"
+    libelle: "Saisir"
+    parent: null
+    description: "Colorer rapidement la surface d'une pièce à feu vif."
+  - slug: "sous-vide"
+    libelle: "Sous vide"
+    parent: null
+    description: "Cuire un produit emballé sous vide à basse température contrôlée."
+  - slug: "suer"
+    libelle: "Suer"
+    parent: null
+    description: "Faire cuire doucement des légumes dans un corps gras sans coloration."
+  - slug: "tourner"
+    libelle: "Tourner"
+    parent: null
+    description: "Donner une forme régulière et lisse à un légume par des coupes successives."
+  - slug: "fouetter"
+    libelle: "Fouetter"
+    parent: null
+    description: "Incorporer de l'air dans une préparation avec un fouet."
+  - slug: "foisonner"
+    libelle: "Foisonner"
+    parent: null
+    description: "Augmenter le volume d'une préparation en incorporant de l'air."
+  - slug: "petrir"
+    libelle: "Pétrir"
+    parent: null
+    description: "Travailler une pâte pour développer son réseau de gluten."

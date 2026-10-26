@@ -1,0 +1,19 @@
+nom: "saisons"
+libelle: "Saisons"
+valeurs:
+  - slug: "printemps"
+    libelle: "Printemps"
+    parent: null
+    description: "Saison des asperges, des petits pois et des premières herbes."
+  - slug: "ete"
+    libelle: "Été"
+    parent: null
+    description: "Saison des tomates, des fruits rouges et des légumes-fruits."
+  - slug: "automne"
+    libelle: "Automne"
+    parent: null
+    description: "Saison des champignons, des courges et des fruits à pépins."
+  - slug: "hiver"
+    libelle: "Hiver"
+    parent: null
+    description: "Saison des légumes racines, des choux et des agrumes."

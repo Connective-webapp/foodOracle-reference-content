@@ -1,0 +1,1018 @@
+name: forge-ci
+
+# Workflow réutilisable du modèle CI `forge` (cahier des charges §7).
+# Appelé uniquement par `forge` via un appelant en `workflow_dispatch`.
+# Prérequis de l'image de cellule : binaire `forge-plan` présent à
+# `/usr/local/bin/forge-plan`, plus les outils de chaque écosystème testé
+# (rustup, node + corepack, composer, python3 + pip, go), `gitleaks` pour le lot `securite`
+# et, si un dépôt le demande, PostgreSQL 18 + pgvector (`[services]` / `[[jobs]]`).
+# Lots de la matrice (A12-P9) : un par écosystème touché, un lot `securite` (gitleaks sur les
+# commits du candidat absents de la base, audit des dépendances) et un lot `job` par entrée
+# `[[jobs]]` de `.forge.toml` concernée par le diff.
+# Aucun déclencheur push/pull_request, aucune annulation : un run va à son terme.
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "SHA ou ref du candidat à tester (dev + PR)"
+        type: string
+        required: true
+      base:
+        description: "Ref de base comparée au candidat"
+        type: string
+        required: false
+        default: dev
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: forge-s
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      empty: ${{ steps.plan.outputs.empty }}
+    steps:
+      - name: Checkout du candidat
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          ref: ${{ inputs.ref }}
+          # Historique complet : la base doit être présente pour `origin/<base>`.
+          fetch-depth: 0
+
+      - name: forge-plan
+        id: plan
+        env:
+          BASE: ${{ inputs.base }}
+          HEAD: ${{ inputs.ref }}
+        run: |
+          # Durées mesurées par paquet (A15-P3) : écrites en fin de phase de test Node dans le cache du compte
+          # (/forge/cache/timings/<propriétaire>__<dépôt>.json) ; absentes, le plan garde l'ancienne répartition.
+          args=()
+          timings="${FORGE_CACHE_ROOT:-/forge/cache}/timings/${GITHUB_REPOSITORY//\//__}.json"
+          if [ -r "$timings" ]; then args+=(--timings "$timings"); fi
+          /usr/local/bin/forge-plan --repo . --base "origin/$BASE" --head "$HEAD" --format github "${args[@]}"
+
+  shard:
+    needs: plan
+    if: needs.plan.outputs.empty == 'false'
+    runs-on: ${{ matrix.class }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    name: ${{ matrix.ecosystem == 'job' && format('job · {0} · {1}', matrix.job, matrix.class) || format('{0} · {1} · {2}', matrix.ecosystem, matrix.class, matrix.part) }}
+    env:
+      PACKAGES: ${{ join(matrix.packages, ' ') }}
+      # Tests Node un paquet à la fois (opt-in .forge.toml ou base partagée détectée).
+      SEQ_TESTS: ${{ matrix.sequential_tests }}
+      # Sous-lot vitest `i/n` (A15-P3, vide sinon) : le lot ne contient que le paquet découpé.
+      VITEST_SHARD: ${{ matrix.vitest_shard }}
+      # Drapeau seulement (A12-P8) : les valeurs de `[services]` ne passent jamais par une sortie de
+      # job (GitHub masque toute sortie contenant la valeur d'un secret). L'étape « Services locaux »
+      # relit la définition dans le candidat avec `forge-plan services`.
+      FORGE_SERVICES: ${{ matrix.services }}
+      # Lots `job` et `securite` (A12-P9) : seulement des identifiants (nom du job, écosystèmes à
+      # auditer). Commandes, variables et services du job sont relus dans le candidat avec
+      # `forge-plan job --name` ; les options de sécurité avec `forge-plan securite`.
+      FORGE_JOB: ${{ matrix.job }}
+      FORGE_AUDITS: ${{ join(matrix.audits, ' ') }}
+      FORGE_BASE: ${{ inputs.base }}
+    steps:
+      # Historique complet (A13-P7) : des tests lisent d'anciens commits (`git archive <sha>`, gardes de
+      # compatibilité) ; un checkout superficiel les rend introuvables. Les objets viennent du miroir local.
+      - name: Checkout du candidat
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      # Lot `securite` (A12-P9) : gitleaks sur les commits du candidat absents de la base (`origin/<base>..HEAD`,
+      # deux points : les commits de la base déjà fusionnés ne sont pas rescannés). Les valeurs trouvées sont
+      # masquées (--redact). Une `.gitleaks.toml` ou une `.gitleaksignore` du dépôt est respectée.
+      - name: Sécurité (gitleaks)
+        if: matrix.ecosystem == 'securite'
+        run: |
+          set -euo pipefail
+          CONF=$("${FORGE_PLAN_BIN:-forge-plan}" securite --repo . --format json) \
+            || { echo "::error::forge-plan securite a échoué (binaire absent ou .forge.toml invalide)"; exit 1; }
+          if [ "$(jq -r '.gitleaks' <<<"$CONF")" != true ]; then
+            echo "gitleaks désactivé ([securite] gitleaks = false)"
+            exit 0
+          fi
+          if ! command -v gitleaks >/dev/null; then
+            echo "::error::gitleaks est absent de l'image de cellule : appliquer le correctif à chaud de forge/image/README.md (Correctif à chaud) ou reconstruire l'image"
+            exit 1
+          fi
+          base_name=${FORGE_BASE:-dev}
+          [[ "$base_name" =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "::error::base invalide : $base_name"; exit 1; }
+          # Historique complet : le checkout du lot est superficiel.
+          if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+            git fetch --no-tags --unshallow origin
+          fi
+          git fetch --no-tags origin "+refs/heads/$base_name:refs/remotes/origin/$base_name"
+          base="origin/$base_name"
+          head=$(git rev-parse HEAD)
+          count=$(git rev-list --count "$base..$head")
+          if [ "$count" -eq 0 ]; then
+            echo "aucun commit propre au candidat : rien à scanner"
+            exit 0
+          fi
+          echo "gitleaks : $count commit(s) dans $base..$head"
+          log=$(mktemp)
+          rc=0
+          gitleaks git --no-banner --no-color --redact --exit-code 1 --log-opts="$base..$head" . 2>&1 | tee "$log" || rc=${PIPESTATUS[0]}
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::gitleaks a détecté un secret dans les commits du candidat (valeur masquée) ou a échoué. Révoquer le secret, le retirer des commits de la PR ; faux positif : .gitleaksignore (empreinte) ou allowlist de .gitleaks.toml"
+            exit 1
+          fi
+          # Garde-fou : gitleaks sort en succès quand git échoue (« 0 commits scanned », ex. propriété du dépôt) ;
+          # un passage sans aucun commit scanné alors que le candidat en a ne vaut pas verdict.
+          scanned=$(sed -nE 's/.* ([0-9]+) commits? scanned.*/\1/p' "$log" | tail -1)
+          if [ "${scanned:-0}" -lt 1 ]; then
+            echo "::error::gitleaks n'a scanné aucun des $count commit(s) du candidat : verdict impossible"
+            exit 1
+          fi
+          echo "gitleaks : $scanned commit(s) scanné(s), aucun secret"
+
+      # Lot `securite` : audit des dépendances par écosystème (FORGE_AUDITS, calculé par forge-plan ; en portée « diff », seulement
+      # les écosystèmes dont un manifeste ou un verrou change, et seules les vulnérabilités nouvelles par rapport à la base échouent).
+      # Échec seulement à partir de `[securite] audit_niveau` (défaut high) quand l'outil sait filtrer
+      # (pnpm, npm, yarn, bun, composer) ; pip-audit, cargo-audit et govulncheck n'ont pas de filtre de
+      # gravité : toute vulnérabilité fait échouer, et l'outil absent de l'image donne un avertissement.
+      - name: Sécurité (audit des dépendances)
+        if: matrix.ecosystem == 'securite'
+        run: |
+          set -uo pipefail
+          CONF=$("${FORGE_PLAN_BIN:-forge-plan}" securite --repo . --format json) \
+            || { echo "::error::forge-plan securite a échoué (binaire absent ou .forge.toml invalide)"; exit 1; }
+          if [ "$(jq -r '.audit' <<<"$CONF")" != true ]; then
+            echo "audit désactivé ([securite] audit = false)"
+            exit 0
+          fi
+          level=$(jq -r '.audit_niveau' <<<"$CONF")
+          case "$level" in
+            low) min=1 ;; moderate) min=2 ;; high) min=3 ;; critical) min=4 ;;
+            *) echo "::error::audit_niveau invalide : $level"; exit 1 ;;
+          esac
+          if [ -z "${FORGE_AUDITS:-}" ]; then
+            echo "aucun écosystème à auditer"
+            exit 0
+          fi
+          if [ -d /forge/cache ] && [ -w /forge/cache ]; then
+            export COREPACK_HOME=${COREPACK_HOME:-/forge/cache/corepack}
+          fi
+          failed=0
+          tmp=$(mktemp -d)
+          scope=$(jq -r '.audit_portee' <<<"$CONF")
+          # Portée « diff » (défaut) : une vulnérabilité déjà présente sur la base ne fait pas échouer ; seules celles que le
+          # candidat ajoute ou modifie comptent. La base est extraite dans un worktree et auditée au même endroit.
+          basedir=""
+          if [ "$scope" = diff ]; then
+            base_name=${FORGE_BASE:-dev}
+            if [[ "$base_name" =~ ^[A-Za-z0-9._/-]+$ ]] \
+              && git fetch -q --no-tags --depth 1 origin "+refs/heads/$base_name:refs/remotes/origin/$base_name" \
+              && git worktree add -q --detach "$tmp/base" "origin/$base_name"; then
+              basedir="$tmp/base"
+            else
+              echo "::warning::base introuvable : toute vulnérabilité fera échouer l'audit"
+            fi
+          fi
+          locks() { find . -name "$1" -not -path '*/node_modules/*' -not -path '*/vendor/*' -not -path '*/target/*' -not -path './.git/*' | sort; }
+          advisory_ids() { grep -ohE 'GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}|CVE-[0-9]{4}-[0-9]+|RUSTSEC-[0-9]{4}-[0-9]+|PKSA-[a-z0-9-]+|PYSEC-[0-9]+-[0-9]+|GO-[0-9]{4}-[0-9]+' "$1" | sort -u; }
+          # known_on_base <dossier> <sortie du candidat> <commande...> : vrai si la base échoue avec toutes les mêmes alertes.
+          known_on_base() {
+            local dir=$1 out=$2 id
+            shift 2
+            [ -n "$basedir" ] && [ -d "$basedir/$dir" ] || return 1
+            ( cd "$basedir/$dir" && "$@" ) >"$out.base" 2>&1 && return 1
+            [ -n "$(advisory_ids "$out")" ] || return 1
+            while IFS= read -r id; do
+              grep -qF -- "$id" "$out.base" || return 1
+            done < <(advisory_ids "$out")
+            return 0
+          }
+          # audit_cmd <libellé> <dossier> <commande...> : échec = vulnérabilité (ou outil en échec).
+          audit_cmd() {
+            local label=$1 dir=$2 out
+            shift 2
+            out=$(mktemp "$tmp/out.XXXXXX")
+            echo "::group::audit $label — $dir"
+            if (cd "$dir" && "$@") >"$out" 2>&1; then
+              cat "$out"
+              echo "audit $label : rien à signaler"
+            else
+              cat "$out"
+              if [ "$scope" = diff ] && known_on_base "$dir" "$out" "$@"; then
+                echo "::warning::audit $label : vulnérabilités déjà présentes sur la base, aucune nouvelle dans $dir"
+              else
+                echo "::error::audit $label : vulnérabilité de gravité $level ou plus dans $dir (ou outil en échec)"
+                failed=1
+              fi
+            fi
+            echo "::endgroup::"
+          }
+          audit_node() {
+            local lock dir seen=" "
+            corepack enable 2>/dev/null || true
+            while IFS= read -r lock; do
+              dir=$(dirname "$lock"); seen+="$dir "
+              audit_cmd pnpm "$dir" pnpm audit --prod --audit-level "$level"
+            done < <(locks pnpm-lock.yaml)
+            while IFS= read -r lock; do
+              dir=$(dirname "$lock"); case "$seen" in *" $dir "*) continue ;; esac; seen+="$dir "
+              if [ -f "$dir/.yarnrc.yml" ]; then
+                audit_cmd yarn "$dir" yarn npm audit --environment production --severity "$level"
+              else
+                audit_cmd yarn "$dir" yarn audit --groups dependencies --level "$level"
+              fi
+            done < <(locks yarn.lock)
+            while IFS= read -r lock; do
+              dir=$(dirname "$lock"); case "$seen" in *" $dir "*) continue ;; esac; seen+="$dir "
+              audit_cmd npm "$dir" npm audit --omit=dev --audit-level="$level"
+            done < <(locks package-lock.json)
+            while IFS= read -r lock; do
+              dir=$(dirname "$lock"); case "$seen" in *" $dir "*) continue ;; esac; seen+="$dir "
+              audit_cmd bun "$dir" bun audit --prod --audit-level="$level"
+            done < <(locks bun.lock)
+          }
+          # composer audit : gravité lue dans le JSON ; une gravité absente compte comme dépassant le seuil.
+          composer_gate() {
+            local out n
+            out=$(composer audit --locked --no-dev --abandoned=ignore --no-interaction --format=json 2>"$tmp/composer.err")
+            if ! jq -e . >/dev/null 2>&1 <<<"$out"; then
+              cat "$tmp/composer.err" >&2 || true
+              echo "sortie de composer audit illisible" >&2
+              return 1
+            fi
+            n=$(jq --argjson min "$min" '[((.advisories // {}) | if type == "array" then {} else . end)
+              | to_entries[] | .value[]
+              | ({"critical": 4, "high": 3, "medium": 2, "moderate": 2, "low": 1}[((.severity // "") | ascii_downcase)] // 5)
+              | select(. >= $min)] | length' <<<"$out") || return 1
+            if [ "$n" -gt 0 ]; then
+              jq -r '(.advisories // {}) | if type == "array" then {} else . end
+                | to_entries[] | .key as $p | .value[] | "\($p) : \(.advisoryId // .cve // "?") (\(.severity // "gravité inconnue"))"' <<<"$out" >&2
+              echo "$n avis de gravité $level ou plus" >&2
+              return 1
+            fi
+          }
+          audit_php() {
+            local lock
+            while IFS= read -r lock; do
+              audit_cmd composer "$(dirname "$lock")" composer_gate
+            done < <(locks composer.lock)
+          }
+          audit_python() {
+            local f
+            if ! command -v pip-audit >/dev/null; then
+              echo "::warning::pip-audit est absent de l'image de cellule : audit Python ignoré"
+              return
+            fi
+            while IFS= read -r f; do
+              audit_cmd pip-audit "$(dirname "$f")" pip-audit -r "$(basename "$f")" --no-deps --disable-pip --progress-spinner off
+            done < <(find . -name 'requirements*.txt' -not -path '*/node_modules/*' -not -path '*/.venv/*' -not -path './.git/*' | sort)
+            while IFS= read -r f; do
+              audit_cmd uv.lock "$(dirname "$f")" bash -c 'uv export --frozen --no-dev --no-emit-project --no-hashes -o "$1" >/dev/null && pip-audit -r "$1" --no-deps --disable-pip --progress-spinner off' _ "$tmp/uv-req.txt"
+            done < <(locks uv.lock)
+          }
+          audit_rust() {
+            local lock
+            if ! command -v cargo-audit >/dev/null; then
+              echo "::warning::cargo-audit est absent de l'image de cellule : audit Rust ignoré"
+              return
+            fi
+            while IFS= read -r lock; do
+              audit_cmd cargo "$(dirname "$lock")" cargo audit
+            done < <(locks Cargo.lock)
+          }
+          audit_go() {
+            local mod
+            if ! command -v govulncheck >/dev/null; then
+              echo "::warning::govulncheck est absent de l'image de cellule : audit Go ignoré"
+              return
+            fi
+            while IFS= read -r mod; do
+              audit_cmd govulncheck "$(dirname "$mod")" govulncheck ./...
+            done < <(locks go.mod)
+          }
+          for eco in $FORGE_AUDITS; do
+            case "$eco" in
+              node) audit_node ;;
+              php) audit_php ;;
+              python) audit_python ;;
+              rust) audit_rust ;;
+              go) audit_go ;;
+              *) echo "::warning::écosystème inconnu pour l'audit : $eco" ;;
+            esac
+          done
+          rm -rf "$tmp"
+          if [ "$failed" -ne 0 ]; then exit 1; fi
+          echo "audit des dépendances : aucune vulnérabilité de gravité $level ou plus"
+
+      # Lot `securite` (A14-P2) : standard des Dockerfile, avertissement seulement. Un ARG déclaré avant une étape lourde
+      # (install des dépendances, compilation) invalide ses couches pour chaque valeur : placer les ARG qui varient par
+      # image (variante, nom de service) après ces couches (forge/docs/STANDARD-DEPOTS.md, règle 10).
+      - name: Sécurité (standard Dockerfile)
+        if: matrix.ecosystem == 'securite'
+        run: |
+          set -uo pipefail
+          while IFS= read -r -d '' f; do
+            awk -v F="${f#./}" '
+              function flush(   t, n, i, a, nm) {
+                t = cur; cur = ""
+                if (t == "") return
+                if (match(t, /^[ \t]*[A-Za-z]+/)) {
+                  kw = toupper(substr(t, RSTART, RLENGTH)); gsub(/[ \t]/, "", kw)
+                  rest = substr(t, RSTART + RLENGTH)
+                } else return
+                if (kw == "FROM") { nargs = 0; delete warned; delete argl; return }
+                if (kw == "ARG") {
+                  sub(/^[ \t]+/, "", rest); nm = rest; sub(/[= \t].*$/, "", nm)
+                  if (nm != "") { argl[++nargs] = nm; argline[nm] = start }
+                  return
+                }
+                if (kw != "RUN") return
+                if (rest !~ /(pnpm[ \t]+(install|i)|npm[ \t]+(ci|install)|yarn[ \t]+install|cargo[ \t]+build|composer[ \t]+install|pip3?[ \t]+install)/) return
+                for (i = 1; i <= nargs; i++) {
+                  nm = argl[i]
+                  if (nm in warned) continue
+                  warned[nm] = 1
+                  printf "::warning file=%s,line=%d::ARG %s (ligne %d) précède une étape lourde (ligne %d) : ses couches seront reconstruites pour chaque valeur. Si cet ARG varie par image, le déplacer après les couches lourdes (STANDARD-DEPOTS.md, règle 10)\n", F, argline[nm], nm, argline[nm], start
+                }
+              }
+              {
+                line = $0
+                if (cur == "") { if (line ~ /^[ \t]*(#|$)/) next; start = NR }
+                else if (line ~ /^[ \t]*#/) next
+                cont = (line ~ /\\[ \t]*$/)
+                sub(/\\[ \t]*$/, "", line)
+                cur = cur " " line
+                if (!cont) flush()
+              }
+              END { flush() }
+            ' "$f"
+          done < <(find . \( -name 'Dockerfile' -o -name 'Dockerfile.*' -o -name '*.Dockerfile' \) -type f -not -path '*/node_modules/*' -not -path '*/vendor/*' -not -path '*/target/*' -not -path './.git/*' -print0)
+          exit 0
+
+      # Caches : le serveur de cache forge est transparent pour actions/cache@v4.
+      - name: Cache cargo
+        if: matrix.ecosystem == 'rust'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: forge-rust-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: forge-rust-
+
+      # Node : pas d'actions/cache. Mesuré sur cosmo (A12-P7) : la clé ne trouvait jamais d'entrée
+      # (18 à 58 s perdues par lot) et le magasin pnpm par défaut vit dans la cellule jetable
+      # (« reused 0, downloaded 465 » à chaque lot). Le magasin pnpm et corepack sont désormais
+      # dans /forge/cache, monté par compte et persistant (voir l'étape Node).
+
+      - name: Cache composer
+        if: matrix.ecosystem == 'php'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: forge-php-${{ hashFiles('**/composer.lock') }}
+          restore-keys: forge-php-
+
+      - name: Cache pip
+        if: matrix.ecosystem == 'python'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: forge-python-${{ hashFiles('**/pyproject.toml', '**/requirements*.txt') }}
+          restore-keys: forge-python-
+
+      - name: Cache go
+        if: matrix.ecosystem == 'go'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: forge-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: forge-go-
+
+      # Services locaux (A12-P6) : `[services]` de .forge.toml, validé par forge-plan. Démarrés dans la
+      # cellule par l'utilisateur runner, sans Docker, avant toute phase de test. PostgreSQL : binaires
+      # de l'image (/usr/lib/postgresql/<version>/bin), cluster jetable dans $RUNNER_TEMP.
+      - name: Services locaux (.forge.toml)
+        run: |
+          set -euo pipefail
+          if [ "${FORGE_SERVICES:-false}" != "true" ]; then
+            echo "aucun service demandé"
+            exit 0
+          fi
+          # Définition validée par forge-plan depuis le .forge.toml du candidat (checkout courant) :
+          # pour un lot `job`, les services de ce job seul (`[[jobs]]`), jamais ceux de `[services]`.
+          SERVICES=$("${FORGE_PLAN_BIN:-forge-plan}" services --repo . --format json ${FORGE_JOB:+--job "$FORGE_JOB"}) \
+            || { echo "::error::forge-plan services a échoué (binaire absent ou .forge.toml invalide)"; exit 1; }
+          if ! jq -e '(.postgres // null) != null' <<<"$SERVICES" >/dev/null 2>&1; then
+            echo "aucun service demandé"
+            exit 0
+          fi
+          pg=$(jq -c '.postgres' <<<"$SERVICES")
+          version=$(jq -r '.version' <<<"$pg")
+          port=$(jq -r '.port' <<<"$pg")
+          [[ "$version" =~ ^[0-9]+$ ]] || { echo "::error::version PostgreSQL invalide : $version"; exit 1; }
+          [[ "$port" =~ ^[0-9]+$ ]] || { echo "::error::port PostgreSQL invalide : $port"; exit 1; }
+          bin="${FORGE_PG_BIN_DIR:-/usr/lib/postgresql/$version/bin}"
+          for tool in initdb pg_ctl; do
+            [ -x "$bin/$tool" ] || { echo "::error::$bin/$tool absent de l'image de cellule"; exit 1; }
+          done
+          root="$RUNNER_TEMP/forge-services/postgres"
+          rm -rf "$root"
+          mkdir -p "$root/sock"
+          chmod 700 "$root"
+          # Répertoire des binaires, relu par l'étape d'arrêt (qui ne relit pas .forge.toml).
+          printf '%s' "$bin" > "$root/bin"
+          # Superutilisateur postgres, mot de passe postgres, authentification par mot de passe (TCP et socket).
+          printf 'postgres' > "$root/pw"
+          "$bin/initdb" -D "$root/data" -U postgres -E UTF8 --no-sync \
+            --auth-host=scram-sha-256 --auth-local=scram-sha-256 --pwfile="$root/pw" >"$root/initdb.log" 2>&1 \
+            || { cat "$root/initdb.log" || true; echo "::error::initdb a échoué"; exit 1; }
+          # Extensions : seules celles qui s'exécutent au chargement du serveur vont dans shared_preload_libraries.
+          preload=""
+          while IFS= read -r ext; do
+            [[ "$ext" =~ ^[a-z0-9_-]+$ ]] || { echo "::error::extension invalide : $ext"; exit 1; }
+            case "$ext" in
+              pg_stat_statements|auto_explain|pg_prewarm) preload="${preload:+$preload,}$ext" ;;
+            esac
+          done < <(jq -r '.extensions[]' <<<"$pg")
+          {
+            echo "listen_addresses = '127.0.0.1,::1'"
+            echo "port = $port"
+            echo "unix_socket_directories = '$root/sock'"
+            echo "max_connections = 200"
+            # Base jetable de test : durabilité inutile, démarrage et tests plus rapides.
+            echo "fsync = off"
+            echo "synchronous_commit = off"
+            echo "full_page_writes = off"
+            if [ -n "$preload" ]; then echo "shared_preload_libraries = '$preload'"; fi
+          } >> "$root/data/postgresql.conf"
+          "$bin/pg_ctl" -D "$root/data" -l "$root/postgres.log" -w -t 60 start >"$root/pg_ctl.log" 2>&1 \
+            || { cat "$root/pg_ctl.log" "$root/postgres.log" 2>/dev/null || true; echo "::error::PostgreSQL n'a pas démarré"; exit 1; }
+          export PGPASSWORD=postgres PGCONNECT_TIMEOUT=5
+          ready=0
+          for _ in $(seq 1 30); do
+            if pg_isready -q -h 127.0.0.1 -p "$port"; then ready=1; break; fi
+            sleep 1
+          done
+          [ "$ready" -eq 1 ] || { cat "$root/postgres.log" || true; echo "::error::PostgreSQL ne répond pas sur 127.0.0.1:$port"; exit 1; }
+          while IFS= read -r db; do
+            [[ "$db" =~ ^[a-z_][a-z0-9_]{0,62}$ ]] || { echo "::error::nom de base invalide : $db"; exit 1; }
+            psql -q -h 127.0.0.1 -p "$port" -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"$db\""
+            echo "base créée : $db"
+          done < <(jq -r '.databases[]' <<<"$pg")
+          # Variables d'environnement des tests (noms et valeurs déjà validés par forge-plan, revérifiés ici).
+          if jq -e '.env | to_entries | any(.value | test("[\\n\\r]"))' <<<"$pg" >/dev/null; then
+            echo "::error::valeur de variable avec saut de ligne refusée"; exit 1
+          fi
+          while IFS= read -r line; do
+            [ -n "$line" ] || continue
+            name=${line%%=*}
+            [[ "$name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { echo "::error::nom de variable invalide : $name"; exit 1; }
+            echo "$line" >> "$GITHUB_ENV"
+            echo "variable exportée : $name"
+          done < <(jq -r '.env | to_entries[] | "\(.key)=\(.value)"' <<<"$pg")
+          echo "PostgreSQL $version prêt sur 127.0.0.1:$port (préchargé : ${preload:-rien})"
+
+      - name: Rust (cargo)
+        if: matrix.ecosystem == 'rust'
+        run: |
+          set -euo pipefail
+          if command -v sccache >/dev/null; then export RUSTC_WRAPPER=sccache; fi
+          if command -v cargo-nextest >/dev/null; then test=(cargo nextest run); else test=(cargo test); fi
+          done_list=" "
+          while IFS= read -r manifest; do
+            dir=$(dirname "$manifest")
+            members=$(cd "$dir" && cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name') || continue
+            sel=()
+            for p in $PACKAGES; do
+              case "$done_list" in *" $p "*) continue ;; esac
+              if grep -qx -- "$p" <<<"$members"; then sel+=("$p"); done_list+="$p "; fi
+            done
+            [ ${#sel[@]} -eq 0 ] && continue
+            flags=(); for p in "${sel[@]}"; do flags+=(-p "$p"); done
+            echo "::group::cargo — $dir"
+            (cd "$dir" && "${test[@]}" "${flags[@]}" && cargo clippy "${flags[@]}" -- -D warnings)
+            echo "::endgroup::"
+          done < <(find . -name Cargo.toml -not -path './.git/*' -not -path '*/target/*')
+
+      # Version de Node demandée par le dépôt (A13-P3) : `.nvmrc`, puis `.node-version`, puis
+      # `engines.node` du package.json racine ; 22 par défaut (Node de l'image). Aucune action si
+      # la majeure installée est déjà la bonne.
+      - name: Node demandé par le dépôt
+        id: node-want
+        if: matrix.ecosystem == 'node'
+        run: |
+          set -euo pipefail
+          want=""
+          for f in .nvmrc .node-version; do
+            [ -f "$f" ] || continue
+            v=$(head -n 1 "$f" | tr -d '[:space:]')
+            v=${v#v}
+            if [[ "$v" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then want=$v; break; fi
+          done
+          if [ -z "$want" ] && [ -f package.json ]; then
+            range=$(jq -r '.engines.node // empty' package.json 2>/dev/null || true)
+            # Première majeure de la plage (`>=24.22.1 <25`, `^24`, `24.x`) ; une plage qui
+            # commence par `<` ou `*` ne désigne pas de majeure.
+            if [[ "$range" =~ ^[[:space:]]*[\>=\^~v[:space:]]*([0-9]+) ]]; then want=${BASH_REMATCH[1]}; fi
+          fi
+          want=${want:-22}
+          have=$(node -v 2>/dev/null || true)
+          have=${have#v}; have=${have%%.*}
+          echo "node : demandé $want, installé ${have:-aucun}"
+          echo "version=$want" >> "$GITHUB_OUTPUT"
+          if [ "${want%%.*}" = "${have:-}" ]; then echo "switch=false" >> "$GITHUB_OUTPUT"; else echo "switch=true" >> "$GITHUB_OUTPUT"; fi
+
+      # Cache d'outils de l'image (RUNNER_TOOL_CACHE=/opt/hostedtoolcache) : Node 24 y est préinstallé,
+      # setup-node le résout sans réseau ; toute autre majeure est téléchargée.
+      - name: Node (setup-node)
+        if: matrix.ecosystem == 'node' && steps.node-want.outputs.switch == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: ${{ steps.node-want.outputs.version }}
+
+      - name: Node (pnpm, npm, yarn ou bun)
+        if: matrix.ecosystem == 'node'
+        run: |
+          set -euo pipefail
+          # Caches persistants du compte (/forge/cache, monté dans la cellule). `PNPM_STORE_DIR`
+          # n'est pas lue par pnpm : le magasin est passé à `pnpm install --store-dir`.
+          pnpm_store=""
+          cache_root=${FORGE_CACHE_ROOT:-/forge/cache}
+          if [ -d "$cache_root" ] && [ -w "$cache_root" ]; then
+            pnpm_store=${PNPM_STORE_DIR:-$cache_root/pnpm}
+            export COREPACK_HOME=${COREPACK_HOME:-$cache_root/corepack}
+          fi
+          corepack enable
+          # Dépôt à paquet unique (même règle que forge-plan) : ni `workspaces` dans package.json
+          # ni pnpm-workspace.yaml. Le paquet racine est alors lancé sans --workspace/--filter,
+          # sinon npm échoue avec « No workspaces found: --workspace=<nom> ».
+          single=1
+          if [ -f pnpm-workspace.yaml ] || jq -e '(.workspaces // empty) | (if type == "array" then length else ((.packages // []) | length) end) > 0' package.json >/dev/null 2>&1; then
+            single=0
+          fi
+          if [ -f pnpm-lock.yaml ]; then
+            # Liens physiques (A14-P3) : forged pose `_work` sous /forge/cache (même montage que le
+            # magasin), donc pnpm lie au lieu de copier `node_modules` dans le tmpfs de la cellule.
+            # `link(2)` échoue (EXDEV) entre deux montages, même sur un même disque : on le sonde
+            # plutôt que de comparer les numéros de périphérique.
+            import_args=()
+            if [ -n "$pnpm_store" ]; then
+              mkdir -p "$pnpm_store"
+              probe=".forge-link-probe.$$"
+              if : >"$pnpm_store/$probe" 2>/dev/null && ln "$pnpm_store/$probe" "$probe" 2>/dev/null; then
+                import_args=(--package-import-method hardlink)
+                echo "pnpm : magasin et espace de travail sur le même montage, node_modules en liens physiques"
+              else
+                echo "::warning::pnpm : magasin et espace de travail sur deux montages, node_modules sera copié"
+              fi
+              rm -f "$pnpm_store/$probe" "$probe"
+            fi
+            pnpm install --frozen-lockfile --prefer-offline "${import_args[@]}" ${pnpm_store:+--store-dir "$pnpm_store"}
+            runner=(pnpm run)
+            run_script() { pnpm --filter "$1" run --if-present "$2"; }
+          elif [ -f yarn.lock ]; then
+            yarn install --immutable
+            runner=(yarn run)
+            run_script() {
+              dir=$(yarn workspaces list --json | jq -r --arg n "$1" 'select(.name == $n).location')
+              if jq -e --arg s "$2" '.scripts[$s]' "$dir/package.json" >/dev/null; then yarn workspace "$1" run "$2"; fi
+            }
+          elif [ -f package-lock.json ]; then
+            npm ci
+            runner=(npm run)
+            run_script() { npm run --if-present -w "$1" "$2"; }
+          else
+            # bun (bun.lock / bun.lockb) ou dépôt sans verrou : script lancé dans le dossier du paquet.
+            if [ -f bun.lock ] || [ -f bun.lockb ]; then
+              bun install --frozen-lockfile; runner=(bun run)
+            else
+              echo "::warning::aucun verrou Node : npm install"
+              npm install --no-audit --no-fund; runner=(npm run)
+            fi
+            run_script() {
+              dir=$(find . -name package.json -not -path '*/node_modules/*' -not -path './.git/*' -print0 \
+                | xargs -0 jq -r --arg n "$1" 'select(.name == $n) | input_filename' | head -1 | xargs -r dirname)
+              [ -z "$dir" ] && dir=.
+              if jq -e --arg s "$2" '.scripts[$s]' "$dir/package.json" >/dev/null; then (cd "$dir" && "${runner[@]}" "$2"); fi
+            }
+          fi
+          if [ "$single" -eq 1 ]; then
+            # Paquet racine : script lancé à la racine, sans filtre de workspace (npm, pnpm, yarn, bun).
+            run_script() {
+              if jq -e --arg s "$2" '.scripts[$s]' package.json >/dev/null; then "${runner[@]}" "$2"; fi
+            }
+          fi
+          # ── Durées par paquet (A15-P3) ──────────────────────────────────────────────────────────
+          # Durées par phase (test, et typecheck/build, peu coûteux à mesurer) accumulées en
+          # millisecondes, puis fusionnées en fin de lot dans le cache du compte :
+          # <cache>/timings/<propriétaire>__<dépôt>.json, lu par `forge-plan --timings`. Moyenne
+          # mobile exponentielle (alpha 0,3), écriture atomique (fichier temporaire puis mv) sous
+          # verrou. Une durée mesurée sur un sous-lot vitest `i/n` est ramenée au paquet entier (x n).
+          # Tout échec est un simple avertissement : les durées ne doivent jamais faire échouer le lot.
+          timings_tsv=$(mktemp)
+          now_ms() { local t=${EPOCHREALTIME/./}; echo $((t / 1000)); }
+          record_timing() { printf '%s\t%s\t%s\n' "$1" "$2" "$3" >> "$timings_tsv"; }
+          in_packages() { case " $PACKAGES " in *" $1 "*) return 0 ;; esac; return 1; }
+          flush_timings() {
+            [ -s "$timings_tsv" ] || return 0
+            [ -d "$cache_root" ] && [ -w "$cache_root" ] || return 0
+            [ -n "${GITHUB_REPOSITORY:-}" ] || return 0
+            local dir=$cache_root/timings file tmp obs old n=1
+            file=$dir/${GITHUB_REPOSITORY//\//__}.json
+            if [[ "${VITEST_SHARD:-}" =~ ^[0-9]+/([0-9]+)$ ]]; then n=${BASH_REMATCH[1]}; fi
+            mkdir -p "$dir" || return 1
+            exec 8>"$dir/.lock" || return 1
+            if command -v flock >/dev/null; then flock -w 30 8 || return 1; fi
+            tmp=$(mktemp "$dir/.tmp.XXXXXX") || return 1
+            obs=$(jq -Rsc --argjson n "$n" '
+              [split("\n")[] | select(length > 0) | split("\t") | {p: .[0], ph: .[1],
+                s: ((.[2] | tonumber) * (if .[1] == "test" then $n else 1 end) / 1000)}]' "$timings_tsv") \
+              || { rm -f "$tmp"; return 1; }
+            old='{}'
+            if [ -f "$file" ]; then old=$(jq -c 'if type == "object" then . else {} end' "$file" 2>/dev/null) || old='{}'; fi
+            jq -n --argjson old "$old" --argjson obs "$obs" '
+              0.3 as $a
+              | reduce $obs[] as $x ({packages: ($old.packages // {})};
+                  .packages[$x.p][$x.ph] = ((if .packages[$x.p][$x.ph] | type == "number"
+                      then $a * $x.s + (1 - $a) * .packages[$x.p][$x.ph] else $x.s end) * 1000 | round / 1000))
+              | .version = 1' > "$tmp" || { rm -f "$tmp"; return 1; }
+            mv -f "$tmp" "$file" || { rm -f "$tmp"; return 1; }
+            echo "node : durées par paquet fusionnées dans $file"
+          }
+          flush_timings_or_warn() { flush_timings || echo "::warning::durées par paquet non écrites"; }
+          # pnpm --report-summary : durée (ms) de chaque paquet filtré, par chemin absolu.
+          declare -A dir_name=()
+          if [ -f pnpm-lock.yaml ] && [ "$single" -eq 0 ]; then
+            while IFS=$'\t' read -r name file; do
+              dir_name[$(cd "$(dirname "$file")" && pwd -P)]=$name
+            done < <(find . -name package.json -not -path '*/node_modules/*' -not -path './.git/*' -print0 \
+              | xargs -0 jq -r 'select(.name) | [.name, input_filename] | @tsv')
+          fi
+          collect_pnpm_summary() {
+            local phase=$1 dir ms
+            [ -f pnpm-exec-summary.json ] || return 0
+            while IFS=$'\t' read -r dir ms; do
+              [ -n "${dir_name[$dir]:-}" ] && in_packages "${dir_name[$dir]}" || continue
+              record_timing "${dir_name[$dir]}" "$phase" "$ms"
+            done < <(jq -r '(.executionStatus // {}) | to_entries[] | select(.value.status == "passed") | [.key, ((.value.duration // 0) | round)] | @tsv' pnpm-exec-summary.json 2>/dev/null || true)
+            rm -f pnpm-exec-summary.json
+          }
+
+          # ── Exécution des phases ────────────────────────────────────────────────────────────
+          # Ordre des phases : lint, typecheck, build, puis test (les tests lisent la sortie du
+          # build, ex. dist/index.html) ; une phase ne démarre qu'une fois la précédente finie
+          # sur tous les paquets du lot. Dans une phase, les paquets tournent en concurrence
+          # avec un pool borné au nombre de vCPU de la cellule (FORGE_VCPU, sinon nproc). Le build respecte
+          # l'ordre topologique du workspace et construit aussi les dépendances internes
+          # absentes du lot (la cellule démarre sans artefacts). Les tests sont concurrents
+          # sauf si le plan le refuse (SEQ_TESTS=true : `[node] tests_sequentiels` dans
+          # .forge.toml ou base partagée détectée, ex. scripts/test-db.sh) : un paquet à la fois.
+          # nproc renvoie les CPU de l'hôte (quota cgroup ignoré) : FORGE_VCPU, posé par forged,
+          # donne les vCPU réels de la cellule ; nproc ne sert que hors forge.
+          workers=${FORGE_VCPU:-$(nproc 2>/dev/null || echo 1)}
+          [ "$workers" -ge 1 ] 2>/dev/null || workers=1
+          test_workers=$workers
+          if [ "${SEQ_TESTS:-false}" = true ]; then test_workers=1; fi
+          echo "node : $workers vCPU, tests sur $test_workers à la fois"
+
+          if [ "$single" -eq 1 ]; then
+            # Paquet unique (A12-P2) : rien à paralléliser, phases à la suite.
+            for s in lint typecheck build test; do
+              for p in $PACKAGES; do
+                echo "::group::node — $p · $s"
+                t0=$(now_ms)
+                run_script "$p" "$s"
+                case "$s" in test | build | typecheck) record_timing "$p" "$s" $(($(now_ms) - t0)) ;; esac
+                echo "::endgroup::"
+              done
+            done
+            flush_timings_or_warn
+            exit 0
+          fi
+
+          if [ -f pnpm-lock.yaml ]; then
+            # pnpm gère lui-même pool et ordre topologique. Build : `pkg...` ajoute les
+            # dépendances internes du paquet.
+            pnpm_phase() {
+              local phase=$1 conc=$2 p
+              local -a filters=() extra=()
+              for p in $PACKAGES; do
+                if [ "$phase" = build ]; then filters+=(--filter "$p..."); else filters+=(--filter "$p"); fi
+              done
+              if [ "$phase" = test ]; then extra=("${vitest_args[@]}"); fi
+              rm -f pnpm-exec-summary.json
+              pnpm --workspace-concurrency="$conc" --stream "${filters[@]}" --report-summary run --if-present "$phase" "${extra[@]}"
+            }
+            # Workers vitest (A12-P7). Certains dépôts figent `maxWorkers: 1` sous CI (cosmo :
+            # « runners 1 vCPU »), d'où ~1,3 cœur utilisé sur 8 vCPU pendant toute la phase test
+            # (un seul paquet @cosmo/core : plus de 40 min). Les paquets tournent `P` à la fois
+            # (P = min(paquets avec test, vCPU)) ; chacun reçoit `--maxWorkers=vCPU/P`, ce qui
+            # remplit la cellule sans la dépasser. Seulement si TOUS les scripts `test` des
+            # paquets du lot sont du vitest (≥ 3.2, option --maxWorkers) et que les tests ne sont
+            # pas séquentiels (base partagée : un seul worker par paquet comme avant).
+            vitest_args=()
+            if [ "${SEQ_TESTS:-false}" != true ]; then
+              vitest_ver=$(jq -r '.version // empty' node_modules/vitest/package.json 2>/dev/null || true)
+              vitest_major=${vitest_ver%%.*}; vitest_minor=${vitest_ver#*.}; vitest_minor=${vitest_minor%%.*}
+              if [[ "$vitest_major" =~ ^[0-9]+$ && "$vitest_minor" =~ ^[0-9]+$ ]] \
+                && { [ "$vitest_major" -ge 4 ] || { [ "$vitest_major" -eq 3 ] && [ "$vitest_minor" -ge 2 ]; }; }; then
+                read -r n_tests all_vitest < <(
+                  find . -name package.json -not -path '*/node_modules/*' -not -path './.git/*' -print0 \
+                    | xargs -0 jq -r 'select(.name) | [.name, (.scripts.test // "")] | @tsv' \
+                    | awk -F'\t' -v sel="$PACKAGES" '
+                        BEGIN { n = split(sel, s, " "); for (i = 1; i <= n; i++) want[s[i]] = 1; t = 0; ok = 1 }
+                        ($1 in want) && $2 != "" { t++; if ($2 !~ /^vitest( |$)/) ok = 0 }
+                        END { print t, ok }')
+                if [ "${n_tests:-0}" -ge 1 ] && [ "${all_vitest:-0}" -eq 1 ]; then
+                  pool=$n_tests; [ "$pool" -le "$test_workers" ] || pool=$test_workers
+                  per=$((workers / pool)); [ "$per" -le 8 ] || per=8
+                  if [ "$per" -gt 1 ]; then vitest_args=("--maxWorkers=$per"); fi
+                fi
+              fi
+            fi
+            # Sous-lot vitest (A15-P3) : le plan n'en émet que pour un paquet vitest d'un dépôt pnpm.
+            if [[ "${VITEST_SHARD:-}" =~ ^[0-9]+/[0-9]+$ ]]; then vitest_args+=("--shard=$VITEST_SHARD"); fi
+            echo "node : vitest ${vitest_args[*]:-(config du dépôt)}"
+            for s in lint typecheck build test; do
+              conc=$workers
+              if [ "$s" = test ]; then conc=$test_workers; fi
+              echo "::group::node — $s ($conc en parallèle)"
+              phase_start=$SECONDS
+              pnpm_phase "$s" "$conc"
+              echo "node : phase $s en $((SECONDS - phase_start)) s"
+              case "$s" in test | build | typecheck) collect_pnpm_summary "$s" ;; esac
+              echo "::endgroup::"
+            done
+            flush_timings_or_warn
+            exit 0
+          fi
+
+          # npm, yarn, bun : pool borné maison, avec le graphe interne lu dans les package.json.
+          graph_raw=$(mktemp); graph=$(mktemp)
+          find . -name package.json -not -path '*/node_modules/*' -not -path './.git/*' -print0 \
+            | xargs -0 jq -r 'select(.name) | [.name, input_filename, ([(.dependencies, .devDependencies, .peerDependencies, .optionalDependencies) | objects | keys[]] | unique | join(" "))] | @tsv' \
+            > "$graph_raw"
+          # Nom, fichier, dépendances internes (celles qui sont elles-mêmes des paquets du dépôt).
+          awk -F'\t' 'NR == FNR { known[$1] = 1; next }
+            { out = ""; n = split($3, d, " ");
+              for (i = 1; i <= n; i++) if ((d[i] in known) && d[i] != $1) out = out " " d[i];
+              print $1 "\t" $2 "\t" substr(out, 2) }' "$graph_raw" "$graph_raw" > "$graph"
+
+          # Lot + dépendances internes transitives, un nom par ligne.
+          closure() {
+            awk -F'\t' -v sel="$PACKAGES" '
+              BEGIN { n = split(sel, s, " "); for (i = 1; i <= n; i++) want[s[i]] = 1 }
+              { deps[$1] = $3 }
+              END {
+                do {
+                  changed = 0; k = 0
+                  for (p in want) keys[++k] = p
+                  for (i = 1; i <= k; i++) {
+                    m = split(deps[keys[i]], d, " ")
+                    for (j = 1; j <= m; j++) if (!(d[j] in want)) { want[d[j]] = 1; changed = 1 }
+                  }
+                } while (changed)
+                for (p in want) print p
+              }' "$graph" | sort
+          }
+
+          # run_pool <phase> <topo|flat> <taille du pool> <paquets...>
+          run_pool() {
+            local phase=$1 mode=$2 size=$3; shift 3
+            local -a pkgs=("$@")
+            local -A state=() idx=() deps=()
+            local dir i p d line name ready launched progressed rc pass
+            local running=0 remaining=${#pkgs[@]} failed=0
+            dir=$(mktemp -d)
+            i=0
+            for p in "${pkgs[@]}"; do state[$p]=pending; idx[$p]=$i; i=$((i + 1)); done
+            if [ "$mode" = topo ]; then
+              while IFS=$'\t' read -r name _ line; do
+                [ -n "${state[$name]:-}" ] || continue
+                for d in $line; do
+                  if [ -n "${state[$d]:-}" ]; then deps[$name]+="$d "; fi
+                done
+              done < "$graph"
+            fi
+            while [ "$remaining" -gt 0 ]; do
+              progressed=0
+              for p in "${pkgs[@]}"; do
+                [ "${state[$p]}" = running ] && [ -f "$dir/${idx[$p]}.rc" ] || continue
+                rc=$(cat "$dir/${idx[$p]}.rc")
+                if [ "$rc" -eq 0 ] && in_packages "$p"; then
+                  case "$phase" in test | build | typecheck) record_timing "$p" "$phase" "$(cat "$dir/${idx[$p]}.ms" 2>/dev/null || echo 0)" ;; esac
+                fi
+                echo "::group::node — $p · $phase"
+                cat "$dir/${idx[$p]}.log"
+                echo "::endgroup::"
+                state[$p]=done; running=$((running - 1)); remaining=$((remaining - 1)); progressed=1
+                if [ "$rc" -ne 0 ]; then
+                  echo "::error::node — $p · $phase a échoué (code $rc)"
+                  failed=1
+                fi
+              done
+              if [ "$failed" -eq 1 ]; then
+                # Échec : plus aucun lancement, on attend la fin des paquets en cours.
+                [ "$running" -eq 0 ] && break
+              else
+                launched=0
+                for pass in normal cycle; do
+                  for p in "${pkgs[@]}"; do
+                    [ "$running" -lt "$size" ] || break
+                    [ "${state[$p]}" = pending ] || continue
+                    ready=1
+                    for d in ${deps[$p]:-}; do [ "${state[$d]}" = done ] || { ready=0; break; }; done
+                    [ "$ready" -eq 1 ] || [ "$pass" = cycle ] || continue
+                    state[$p]=running; running=$((running + 1)); launched=1; progressed=1
+                    (
+                      t0=$(now_ms)
+                      if ( run_script "$p" "$phase" ) > "$dir/${idx[$p]}.log" 2>&1; then rc=0; else rc=$?; fi
+                      echo $(($(now_ms) - t0)) > "$dir/${idx[$p]}.ms"
+                      echo "$rc" > "$dir/${idx[$p]}.rc.tmp"
+                      mv "$dir/${idx[$p]}.rc.tmp" "$dir/${idx[$p]}.rc"
+                    ) &
+                    # Passe « cycle » : rien de prêt et rien en cours, on force un seul paquet.
+                    [ "$pass" = cycle ] && break
+                  done
+                  # Passe « cycle » seulement si rien n'est prêt ni en cours (cycle de dépendances).
+                  if [ "$launched" -eq 1 ] || [ "$running" -gt 0 ]; then break; fi
+                done
+              fi
+              [ "$progressed" -eq 1 ] || sleep 0.1
+            done
+            wait
+            rm -rf "$dir"
+            return "$failed"
+          }
+
+          for s in lint typecheck build test; do
+            case "$s" in
+              build)
+                mapfile -t build_set < <(closure)
+                run_pool build topo "$workers" "${build_set[@]}" ;;
+              test)
+                run_pool test flat "$test_workers" $PACKAGES ;;
+              *)
+                run_pool "$s" flat "$workers" $PACKAGES ;;
+            esac
+          done
+          flush_timings_or_warn
+
+      - name: PHP (composer)
+        if: matrix.ecosystem == 'php'
+        run: |
+          set -euo pipefail
+          while IFS= read -r manifest; do
+            name=$(jq -r '.name // empty' "$manifest")
+            case " $PACKAGES " in *" $name "*) ;; *) continue ;; esac
+            echo "::group::composer — $name"
+            (cd "$(dirname "$manifest")" && composer install --no-interaction --prefer-dist \
+              && if [ -x vendor/bin/phpunit ]; then vendor/bin/phpunit; fi)
+            echo "::endgroup::"
+          done < <(find . -name composer.json -not -path './.git/*' -not -path '*/vendor/*')
+
+      - name: Python (pip + pytest ou unittest)
+        if: matrix.ecosystem == 'python'
+        run: |
+          set -euo pipefail
+          while IFS= read -r manifest; do
+            dir=$(dirname "$manifest")
+            name=$(python3 -c 'import sys, tomllib; print(tomllib.load(open(sys.argv[1], "rb")).get("project", {}).get("name", ""))' "$manifest")
+            # Sans [project].name, le planner identifie le paquet par son chemin relatif.
+            [ -n "$name" ] || name=$(realpath --relative-to=. "$dir")
+            case " $PACKAGES " in *" $name "*) ;; *) continue ;; esac
+            echo "::group::python — $name"
+            (
+              cd "$dir"
+              # Extra `test` : installé seulement s'il existe (sinon pip avertit sans rien installer).
+              if python3 -c 'import sys, tomllib; sys.exit("test" not in tomllib.load(open("pyproject.toml", "rb")).get("project", {}).get("optional-dependencies", {}))'; then
+                python3 -m pip install -e ".[test]"
+              else
+                python3 -m pip install -e .
+              fi
+              # Lanceur choisi d'après le dépôt : pytest s'il est déclaré (pyproject, requirements*.txt, pytest.ini, conftest.py), sinon unittest.
+              if grep -qis pytest pyproject.toml requirements*.txt || [ -f pytest.ini ] || [ -f conftest.py ] || [ -f tests/conftest.py ]; then
+                command -v pytest >/dev/null || python3 -m pip install pytest
+                pytest || [ $? -eq 5 ]  # 5 : aucun test collecté
+              elif [ -d tests ] || [ -n "$(find . -name 'test_*.py' -not -path './.git/*' -not -path '*/node_modules/*' | head -n 1)" ]; then
+                if [ -d tests ]; then python3 -m unittest discover -s tests; else python3 -m unittest discover; fi
+              else
+                echo "::notice::python — $name : aucun test, voie ignorée"
+              fi
+            )
+            echo "::endgroup::"
+          done < <(find . -name pyproject.toml -not -path './.git/*')
+
+      - name: Go (go test)
+        if: matrix.ecosystem == 'go'
+        run: |
+          set -euo pipefail
+          while IFS= read -r gomod; do
+            module=$(awk '$1 == "module" { print $2; exit }' "$gomod")
+            case " $PACKAGES " in *" $module "*) ;; *) continue ;; esac
+            echo "::group::go — $module"
+            (cd "$(dirname "$gomod")" && go test ./...)
+            echo "::endgroup::"
+          done < <(find . -name go.mod -not -path './.git/*')
+
+      # Jobs spécifiques du dépôt (A12-P9) : `[[jobs]]` de .forge.toml. Le lot ne porte que le nom ; la définition
+      # (commandes, variables, durée) est relue ici avec `forge-plan job`, après les services du job. Mêmes caches
+      # persistants que l'étape Node. Les commandes sont lancées dans l'ordre, `bash -euo pipefail`, à la racine.
+      # Lot `job` de classe forge-docker (A14-P2) : builder BuildKit partagé du démon hôte (cache commun entre cellules).
+      # forge-jobenv exporte déjà BUILDX_BUILDER=forge-shared ; ici on le confirme, et on retombe sur le builder par défaut
+      # (avec avertissement) si le builder n'existe pas encore dans forge-dockerd.
+      - name: Builder Docker partagé (forge-shared)
+        if: matrix.ecosystem == 'job' && matrix.class == 'forge-docker'
+        run: |
+          set -uo pipefail
+          if docker buildx inspect forge-shared >/dev/null 2>&1; then
+            echo "BUILDX_BUILDER=forge-shared" >> "$GITHUB_ENV"
+            echo "builder buildx : forge-shared"
+          else
+            echo "BUILDX_BUILDER=" >> "$GITHUB_ENV"
+            echo "::warning::builder forge-shared absent de forge-dockerd : builds sans cache partagé (forge/deploy/forge-dockerd-builder.sh)"
+          fi
+
+      - name: Job spécifique (.forge.toml)
+        if: matrix.ecosystem == 'job'
+        run: |
+          set -euo pipefail
+          job=${FORGE_JOB:-}
+          [[ "$job" =~ ^[a-z0-9][a-z0-9_-]{0,39}$ ]] || { echo "::error::nom de job invalide : $job"; exit 1; }
+          DEF=$("${FORGE_PLAN_BIN:-forge-plan}" job --repo . --name "$job" --format json) \
+            || { echo "::error::forge-plan job a échoué (binaire absent, .forge.toml invalide ou job « $job » absent)"; exit 1; }
+          # Caches persistants du compte (/forge/cache, monté dans la cellule), comme l'étape Node.
+          if [ -d /forge/cache ] && [ -w /forge/cache ]; then
+            export COREPACK_HOME=${COREPACK_HOME:-/forge/cache/corepack}
+            export npm_config_store_dir=${PNPM_STORE_DIR:-/forge/cache/pnpm}
+          fi
+          if command -v sccache >/dev/null; then export RUSTC_WRAPPER=sccache; fi
+          corepack enable 2>/dev/null || true
+          # Variables du job (noms et valeurs déjà validés par forge-plan, revérifiés ici).
+          if jq -e '.env // {} | to_entries | any(.value | test("[\\n\\r]"))' <<<"$DEF" >/dev/null; then
+            echo "::error::valeur de variable avec saut de ligne refusée"; exit 1
+          fi
+          while IFS= read -r line; do
+            [ -n "$line" ] || continue
+            name=${line%%=*}
+            [[ "$name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { echo "::error::nom de variable invalide : $name"; exit 1; }
+            export "$name=${line#*=}"
+            echo "variable du job : $name"
+          done < <(jq -r '.env // {} | to_entries[] | "\(.key)=\(.value)"' <<<"$DEF")
+          minutes=$(jq -r '.timeout_minutes' <<<"$DEF")
+          [[ "$minutes" =~ ^[0-9]+$ ]] || { echo "::error::durée invalide : $minutes"; exit 1; }
+          mapfile -d '' -t cmds < <(jq -j '.run[] | ., "\u0000"' <<<"$DEF")
+          [ "${#cmds[@]}" -gt 0 ] || { echo "::error::job « $job » sans commande"; exit 1; }
+          deadline=$((SECONDS + minutes * 60))
+          i=0
+          for cmd in "${cmds[@]}"; do
+            i=$((i + 1))
+            left=$((deadline - SECONDS))
+            if [ "$left" -le 0 ]; then echo "::error::job $job : délai de $minutes min dépassé"; exit 1; fi
+            echo "::group::job $job — commande $i/${#cmds[@]}"
+            echo "\$ ${cmd%%$'\n'*}"
+            rc=0
+            timeout --kill-after=30 "${left}s" bash -euo pipefail -c "$cmd" || rc=$?
+            echo "::endgroup::"
+            if [ "$rc" -eq 124 ]; then echo "::error::job $job : délai de $minutes min dépassé (commande $i)"; exit 1; fi
+            if [ "$rc" -ne 0 ]; then echo "::error::job $job : la commande $i a échoué (code $rc)"; exit "$rc"; fi
+          done
+          echo "job $job : terminé"
+
+      # Arrêt des services locaux, même après un échec (la cellule est jetable, mais le serveur est proprement coupé).
+      - name: Arrêt des services locaux
+        if: always()
+        run: |
+          set -uo pipefail
+          root="$RUNNER_TEMP/forge-services/postgres"
+          [ -f "$root/data/postmaster.pid" ] || exit 0
+          bin=$(cat "$root/bin" 2>/dev/null || echo "${FORGE_PG_BIN_DIR:-/usr/lib/postgresql/16/bin}")
+          "$bin/pg_ctl" -D "$root/data" -m fast -w -t 30 stop || "$bin/pg_ctl" -D "$root/data" -m immediate -w -t 30 stop || true
+          echo "PostgreSQL arrêté"
+
+  forge-ok:
+    needs: [plan, shard]
+    if: always()
+    runs-on: forge-s
+    timeout-minutes: 5
+    steps:
+      - name: Verdict de la porte
+        env:
+          PLAN: ${{ needs.plan.result }}
+          EMPTY: ${{ needs.plan.outputs.empty }}
+          SHARD: ${{ needs.shard.result }}
+        run: |
+          if [ "$PLAN" != success ]; then echo "plan : $PLAN"; exit 1; fi
+          if [ "$EMPTY" = true ]; then echo "plan vide : porte verte"; exit 0; fi
+          if [ "$SHARD" != success ]; then echo "shards : $SHARD"; exit 1; fi
+          echo "porte verte"

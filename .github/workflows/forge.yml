@@ -1,0 +1,14 @@
+name: forge
+on:
+  workflow_dispatch:
+    inputs:
+      ref: {description: "SHA ou ref du candidat (dev + PR)", type: string, required: true}
+      base: {description: "Ref de base", type: string, default: dev}
+permissions:
+  contents: read
+jobs:
+  forge:
+    uses: ./.github/workflows/forge-ci.yml
+    with:
+      ref: ${{ inputs.ref }}
+      base: ${{ inputs.base }}

@@ -2,7 +2,7 @@
 id: 01M5MQ4T8XRN2P5MT9JMC6YNAT
 slug: mentions-legales
 titre: Mentions légales
-description: Éditeur, directeur de la publication et hébergeur du site Cuisinopedia, conformément à l'article 6 de la loi pour la confiance dans l'économie numérique.
+description: Éditeur, directeur de la publication et hébergeur du site FoodOracle, conformément à l'article 6 de la loi pour la confiance dans l'économie numérique.
 langue: fr
 statut: brouillon
 publie_le: null
@@ -19,7 +19,7 @@ mots_cles:
   - éditeur
   - hébergeur
   - directeur de la publication
-  - Cuisinopedia
+  - FoodOracle
 noindex: false
 ---
 
@@ -27,7 +27,7 @@ Ces mentions sont données en application de l'article 6 de la loi n° 2004-575 
 
 ## Éditeur du site
 
-Le site Cuisinopedia est édité par :
+Le site FoodOracle est édité par :
 
 - Dénomination : CONNECTIVE, [FORME JURIDIQUE]
 - Capital social : [CAPITAL]
@@ -51,9 +51,9 @@ Le site est hébergé par :
 
 ## Propriété intellectuelle
 
-Les textes, les fiches, la structure et les graphismes de Cuisinopedia sont protégés par le droit d'auteur. Les images sont utilisées avec leur licence, indiquée sur chaque page qui les porte. Toute reproduction intégrale d'une fiche, hors citation courte avec mention de la source, nécessite l'accord de l'éditeur.
+Les textes, les fiches, la structure et les graphismes de FoodOracle sont protégés par le droit d'auteur. Les images sont utilisées avec leur licence, indiquée sur chaque page qui les porte. Toute reproduction intégrale d'une fiche, hors citation courte avec mention de la source, nécessite l'accord de l'éditeur.
 
-Le nom Cuisinopedia et le logo sont la propriété de CONNECTIVE. [VÉRIFIER LE DÉPÔT ÉVENTUEL DE LA MARQUE]
+Le nom FoodOracle et le logo sont la propriété de CONNECTIVE. [VÉRIFIER LE DÉPÔT ÉVENTUEL DE LA MARQUE]
 
 ## Données personnelles
 

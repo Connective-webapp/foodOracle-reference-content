@@ -2,7 +2,7 @@
 id: 01M5MQ4T8XEM8G1NJ79F6YQCSD
 slug: contact
 titre: Contact et signalement d'erreur
-description: Comment joindre l'équipe de Cuisinopedia, signaler une erreur dans une fiche, demander une correction ou exercer un droit sur vos données.
+description: Comment joindre l'équipe de FoodOracle, signaler une erreur dans une fiche, demander une correction ou exercer un droit sur vos données.
 langue: fr
 statut: brouillon
 publie_le: null
@@ -18,7 +18,7 @@ mots_cles:
   - contact
   - signaler une erreur
   - correction
-  - Cuisinopedia
+  - FoodOracle
 noindex: false
 ---
 

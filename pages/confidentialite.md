@@ -2,7 +2,7 @@
 id: 01M5MQ4T8XZJ8ZBH8T4PQYYA38
 slug: confidentialite
 titre: Politique de confidentialité
-description: Données collectées par Cuisinopedia, pourquoi, sur quelle base, qui les reçoit, combien de temps elles sont gardées, et comment exercer vos droits.
+description: Données collectées par FoodOracle, pourquoi, sur quelle base, qui les reçoit, combien de temps elles sont gardées, et comment exercer vos droits.
 langue: fr
 statut: brouillon
 publie_le: null
@@ -23,7 +23,7 @@ mots_cles:
 noindex: false
 ---
 
-Cette politique explique quelles données personnelles Cuisinopedia traite, pourquoi, et quels droits vous avez. Elle est rédigée en application du règlement (UE) 2016/679, dit RGPD, et de la loi Informatique et Libertés.
+Cette politique explique quelles données personnelles FoodOracle traite, pourquoi, et quels droits vous avez. Elle est rédigée en application du règlement (UE) 2016/679, dit RGPD, et de la loi Informatique et Libertés.
 
 ## Responsable du traitement
 
@@ -35,7 +35,7 @@ La consultation des pages ne demande aucun compte et ne crée aucune donnée d'i
 
 ## Mesure d'audience
 
-Cuisinopedia mesure sa fréquentation avec Umami, un outil d'analyse que l'éditeur héberge lui-même. Umami ne dépose aucun cookie et ne suit pas les personnes d'un site à l'autre. Les données collectées sont agrégées : pages consultées, pays approximatif, type d'appareil, source de la visite. L'adresse IP n'est pas conservée sous une forme permettant de vous identifier [À VÉRIFIER SUR LA CONFIGURATION DÉPLOYÉE].
+FoodOracle mesure sa fréquentation avec Umami, un outil d'analyse que l'éditeur héberge lui-même. Umami ne dépose aucun cookie et ne suit pas les personnes d'un site à l'autre. Les données collectées sont agrégées : pages consultées, pays approximatif, type d'appareil, source de la visite. L'adresse IP n'est pas conservée sous une forme permettant de vous identifier [À VÉRIFIER SUR LA CONFIGURATION DÉPLOYÉE].
 
 - Finalité : mesurer la fréquentation et l'usage des pages, pour améliorer le site.
 - Base légale : intérêt légitime de l'éditeur, dans les conditions d'une mesure d'audience sans suivi.
@@ -47,7 +47,7 @@ Cuisinopedia mesure sa fréquentation avec Umami, un outil d'analyse que l'édit
 L'inscription à la newsletter se fait en deux temps. Vous indiquez votre adresse courriel et cochez le consentement. Un courriel de confirmation vous est envoyé : l'inscription n'est définitive qu'après votre clic sur ce lien. Cette confirmation nous permet de vérifier que l'adresse vous appartient.
 
 - Données traitées : adresse courriel, date et heure de l'inscription, version du texte de consentement affiché, état de la confirmation.
-- Finalité : vous envoyer la newsletter de Cuisinopedia.
+- Finalité : vous envoyer la newsletter de FoodOracle.
 - Base légale : votre consentement (article 6.1.a du RGPD).
 - Prestataire : Brevo, qui envoie les courriels pour le compte de l'éditeur, sous contrat de sous-traitance.
 - Durée de conservation : tant que votre inscription est active. Après désinscription, l'adresse est supprimée de la liste d'envoi ; les preuves de consentement sont conservées [DURÉE DE PREUVE À ARBITRER] pour pouvoir justifier l'inscription.

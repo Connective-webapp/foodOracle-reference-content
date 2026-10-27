@@ -2,7 +2,7 @@
 id: 01M5MQ4T8W00FJM7R527SJ75QE
 slug: charte-editoriale
 titre: Charte éditoriale et méthodologie
-description: Comment Cuisinopedia construit ses fiches, quelles données sont calculées par le code, quel rôle joue l'IA, et comment les erreurs sont corrigées.
+description: Comment FoodOracle construit ses fiches, quelles données sont calculées par le code, quel rôle joue l'IA, et comment les erreurs sont corrigées.
 langue: fr
 statut: brouillon
 publie_le: null
@@ -23,7 +23,7 @@ mots_cles:
 noindex: false
 ---
 
-Cette charte décrit la manière dont Cuisinopedia est construit. Elle sert au lecteur, qui doit pouvoir savoir d'où vient une information, et à l'équipe, qui doit appliquer les mêmes règles à chaque fiche.
+Cette charte décrit la manière dont FoodOracle est construit. Elle sert au lecteur, qui doit pouvoir savoir d'où vient une information, et à l'équipe, qui doit appliquer les mêmes règles à chaque fiche.
 
 ## Ce qu'une fiche contient
 
@@ -87,7 +87,7 @@ Une erreur peut être signalée par la page [contact](/contact/). Une correction
 
 ## Indépendance
 
-Cuisinopedia ne publie pas de contenu contre rémunération sans le signaler. [RÈGLES DE PARTENARIAT ET DE PUBLICITÉ À CONFIRMER PAR LA DIRECTION] Le site ne vend pas de données et n'affiche aucune publicité à la date de cette charte. [À CONFIRMER AVANT PUBLICATION]
+FoodOracle ne publie pas de contenu contre rémunération sans le signaler. [RÈGLES DE PARTENARIAT ET DE PUBLICITÉ À CONFIRMER PAR LA DIRECTION] Le site ne vend pas de données et n'affiche aucune publicité à la date de cette charte. [À CONFIRMER AVANT PUBLICATION]
 
 ## Évolution de la charte
 

@@ -4,7 +4,7 @@ name: forge-ci
 # Appelé uniquement par `forge` via un appelant en `workflow_dispatch`.
 # Prérequis de l'image de cellule : binaire `forge-plan` présent à
 # `/usr/local/bin/forge-plan`, plus les outils de chaque écosystème testé
-# (rustup, node + corepack, composer, python3 + pip, go), `gitleaks` pour le lot `securite`
+# (rustup, node + corepack, composer, python3 + pip, go, erlang/elixir + hex + rebar3, `forge-depcache`), `gitleaks` pour le lot `securite`
 # et, si un dépôt le demande, PostgreSQL 18 + pgvector (`[services]` / `[[jobs]]`).
 # Lots de la matrice (A12-P9) : un par écosystème touché, un lot `securite` (gitleaks sur les
 # commits du candidat absents de la base, audit des dépendances) et un lot `job` par entrée
@@ -356,16 +356,8 @@ jobs:
           done < <(find . \( -name 'Dockerfile' -o -name 'Dockerfile.*' -o -name '*.Dockerfile' \) -type f -not -path '*/node_modules/*' -not -path '*/vendor/*' -not -path '*/target/*' -not -path './.git/*' -print0)
           exit 0
 
-      # Caches : le serveur de cache forge est transparent pour actions/cache@v4.
-      - name: Cache cargo
-        if: matrix.ecosystem == 'rust'
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: forge-rust-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: forge-rust-
+      # Caches : le serveur de cache forge est transparent pour actions/cache@v4. Rust n'en utilise plus (A17-P9) :
+      # registre dans CARGO_HOME persistant et target/ par forge-depcache (étape Rust).
 
       # Node : pas d'actions/cache. Mesuré sur cosmo (A12-P7) : la clé ne trouvait jamais d'entrée
       # (18 à 58 s perdues par lot) et le magasin pnpm par défaut vit dans la cellule jetable
@@ -482,27 +474,175 @@ jobs:
           done < <(jq -r '.env | to_entries[] | "\(.key)=\(.value)"' <<<"$pg")
           echo "PostgreSQL $version prêt sur 127.0.0.1:$port (préchargé : ${preload:-rien})"
 
+      # Rust (A17-P9) : un lot par racine de workspace (`matrix.root`, vide = racine du dépôt). `target/` est restauré et
+      # sauvegardé par forge-depcache (clé : Cargo.lock + rustc -vV + profil + image + racine) ; le registre vit dans
+      # CARGO_HOME=/forge/cache/cargo (forge-jobenv). Un échec de cache n'arrête jamais le lot : on repart à froid.
       - name: Rust (cargo)
         if: matrix.ecosystem == 'rust'
+        env:
+          RUST_ROOT: ${{ matrix.root }}
         run: |
           set -euo pipefail
+          dir=${RUST_ROOT:-.}
+          [[ "$dir" =~ ^[A-Za-z0-9._/@+-]+$ ]] && [[ "$dir" != /* ]] && [[ "$dir" != *..* ]] \
+            || { echo "::error::racine de workspace invalide : $dir"; exit 1; }
+          [ -f "$dir/Cargo.toml" ] || { echo "::error::pas de Cargo.toml dans $dir"; exit 1; }
+          summary=${GITHUB_STEP_SUMMARY:-/dev/null}
           if command -v sccache >/dev/null; then export RUSTC_WRAPPER=sccache; fi
           if command -v cargo-nextest >/dev/null; then test=(cargo nextest run); else test=(cargo test); fi
-          done_list=" "
-          while IFS= read -r manifest; do
-            dir=$(dirname "$manifest")
-            members=$(cd "$dir" && cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name') || continue
-            sel=()
-            for p in $PACKAGES; do
-              case "$done_list" in *" $p "*) continue ;; esac
-              if grep -qx -- "$p" <<<"$members"; then sel+=("$p"); done_list+="$p "; fi
-            done
-            [ ${#sel[@]} -eq 0 ] && continue
-            flags=(); for p in "${sel[@]}"; do flags+=(-p "$p"); done
-            echo "::group::cargo — $dir"
-            (cd "$dir" && "${test[@]}" "${flags[@]}" && cargo clippy "${flags[@]}" -- -D warnings)
+          # Noms préfixés `racine:nom` en cas de collision entre workspaces : le préfixe est retiré avant `cargo -p`.
+          flags=()
+          for p in $PACKAGES; do flags+=(-p "${p##*:}"); done
+          [ ${#flags[@]} -gt 0 ] || { echo "::error::aucun paquet Rust dans le lot"; exit 1; }
+          # Toolchain demandée par le dépôt : avertissement si elle n'est pas préinstallée (sinon rustup la télécharge
+          # à chaque job dans une couche perdue).
+          want=""
+          if [ -f "$dir/rust-toolchain.toml" ]; then
+            want=$(sed -nE 's/^[[:space:]]*channel[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$dir/rust-toolchain.toml" | head -1)
+          elif [ -f "$dir/rust-toolchain" ]; then
+            want=$(sed -nE 's/^[[:space:]]*([A-Za-z0-9._-]+)[[:space:]]*$/\1/p' "$dir/rust-toolchain" | head -1)
+          fi
+          if [ -n "$want" ] && command -v rustup >/dev/null; then
+            installed=$(rustup toolchain list 2>/dev/null | awk '{print $1}')
+            found=0
+            while IFS= read -r tc; do
+              if [ "$tc" = "$want" ] || [[ "$tc" == "$want"-* ]]; then found=1; break; fi
+            done <<<"$installed"
+            if [ "$found" -eq 0 ]; then
+              echo "::warning::toolchain Rust « $want » demandée par $dir absente de l'image de cellule : rustup la téléchargera à chaque job (ajouter la version aux toolchains préinstallées de forge/image)"
+            fi
+          fi
+          rustc_vv=$(cd "$dir" && rustc -vV) || rustc_vv=""
+          image=${FORGE_IMAGE_VERSION:-cellule}
+          depcache() { # échec de cache = continuation à froid
+            if command -v forge-depcache >/dev/null; then
+              forge-depcache "$1" rust --project "$dir" --dir "$dir" --profile test --image "$image" \
+                ${rustc_vv:+--rustc-vv "$rustc_vv"} || echo "::warning::forge-depcache $1 rust : échec ignoré, exécution à froid"
+            else
+              echo "::warning::forge-depcache absent de l'image de cellule : $1 ignoré, exécution à froid"
+            fi
+          }
+          echo "::group::cache target/ — restauration ($dir)"
+          depcache restore
+          echo "::endgroup::"
+          echo "::group::cargo — $dir"
+          if command -v sccache >/dev/null; then sccache --zero-stats >/dev/null 2>&1 || true; fi
+          members=$(cd "$dir" && cargo metadata --no-deps --format-version 1 | jq -c '[.packages[].id]')
+          log=$(mktemp)
+          # Construction des tests en JSON : source des « Fresh » (artefacts `fresh:false`).
+          (cd "$dir" && cargo test --no-run --message-format=json "${flags[@]}") > "$log"
+          count() { # <fresh true|false> <membre true|false>
+            jq -r --argjson m "$members" --argjson f "$1" --argjson own "$2" \
+              'select(.reason == "compiler-artifact" and .fresh == $f and (([.package_id] | inside($m)) == $own)) | .package_id' "$log" | sort -u | wc -l
+          }
+          dep_fresh=$(count true false)
+          dep_rebuilt=$(count false false)
+          own_rebuilt=$(count false true)
+          echo "artefacts : dépendances fresh:true=$dep_fresh, fresh:false=$dep_rebuilt ; membres fresh:false=$own_rebuilt"
+          (cd "$dir" && "${test[@]}" "${flags[@]}" && cargo clippy "${flags[@]}" -- -D warnings)
+          echo "::endgroup::"
+          {
+            echo "### Rust ($dir)"
+            echo
+            echo "| dépendances fresh:true | dépendances fresh:false | membres fresh:false |"
+            echo "|---|---|---|"
+            echo "| $dep_fresh | $dep_rebuilt | $own_rebuilt |"
+            echo
+          } >> "$summary"
+          if command -v sccache >/dev/null; then
+            stats=$(sccache --show-stats 2>/dev/null || true)
+            if [ -n "$stats" ]; then
+              echo "::group::sccache --show-stats"
+              echo "$stats"
+              echo "::endgroup::"
+              {
+                echo "sccache ($dir) :"
+                echo
+                echo '```'
+                grep -E 'Compile requests|Cache hits|Cache misses|Non-cacheable' <<<"$stats" | head -12 || true
+                echo '```'
+                echo
+              } >> "$summary"
+            fi
+          fi
+          # Sauvegarde seulement si tout a réussi (set -e : on n'arrive ici qu'en cas de succès).
+          echo "::group::cache target/ — sauvegarde ($dir)"
+          depcache save
+          echo "::endgroup::"
+
+      # Elixir (A17-P9) : un lot par projet Mix (le lot ne porte que le nom du paquet ; le dossier est retrouvé par
+      # `mix.exs`). deps/ et _build sont restaurés et sauvegardés par forge-depcache ; hex, rebar3 et OTP/Elixir sont dans
+      # l'image (jamais de `mix local.hex`) ; HEX_HOME=/forge/cache/hex (forge-jobenv). Mêmes commandes que l'ancien
+      # job `nucleus-elixir` de cosmo. PostgreSQL et ses variables viennent de l'étape « Services locaux » (.forge.toml).
+      - name: Elixir (mix)
+        if: matrix.ecosystem == 'elixir'
+        run: |
+          set -euo pipefail
+          export MIX_ENV=test
+          summary=${GITHUB_STEP_SUMMARY:-/dev/null}
+          image=${FORGE_IMAGE_VERSION:-cellule}
+          otp_file=$(erl -noshell -eval 'io:format("~s/releases/~s/OTP_VERSION", [code:root_dir(), erlang:system_info(otp_release)]), halt().')
+          otp=$(tr -d '[:space:]' < "$otp_file" 2>/dev/null || true)
+          [ -n "$otp" ] || otp=$(erl -noshell -eval 'io:format("~s", [erlang:system_info(otp_release)]), halt().')
+          elixir_v=$(elixir -e 'IO.write(System.version())')
+          echo "OTP $otp, Elixir $elixir_v, MIX_ENV=$MIX_ENV"
+          depcache() { # <restore|save> <dossier> ; échec de cache = continuation à froid
+            if command -v forge-depcache >/dev/null; then
+              forge-depcache "$1" mix --project "$2" --dir "$2" --otp "$otp" --elixir "$elixir_v" --mix-env "$MIX_ENV" --image "$image" \
+                || echo "::warning::forge-depcache $1 mix : échec ignoré, exécution à froid"
+            else
+              echo "::warning::forge-depcache absent de l'image de cellule : $1 ignoré, exécution à froid"
+            fi
+          }
+          # Dossier d'un paquet : nom = `app:` du mix.exs (à défaut le nom du dossier), ou le chemin en cas de collision.
+          find_dir() {
+            local name=$1 mf dir app base
+            while IFS= read -r mf; do
+              dir=$(dirname "$mf"); dir=${dir#./}
+              app=$(sed -nE 's/(^|[^[:alnum:]_])app:[[:space:]]*:([a-z_][A-Za-z0-9_]*).*/\2/p' "$mf" | head -1)
+              base=${app:-$(basename "$dir")}
+              if [ "$name" = "$base" ] || [ "$name" = "$dir" ]; then echo "$dir"; return 0; fi
+            done < <(find . -name mix.exs -not -path '*/deps/*' -not -path '*/_build/*' -not -path '*/node_modules/*' -not -path '*/target/*' -not -path './.git/*' | sort)
+            return 1
+          }
+          done_dirs=" "
+          for p in $PACKAGES; do
+            dir=$(find_dir "$p") || { echo "::error::projet Mix introuvable pour le paquet « $p »"; exit 1; }
+            case "$done_dirs" in *" $dir "*) continue ;; esac
+            done_dirs+="$dir "
+            [[ "$dir" =~ ^[A-Za-z0-9._/@+-]+$ ]] || { echo "::error::dossier de projet invalide : $dir"; exit 1; }
+            echo "::group::cache deps/ et _build — restauration ($dir)"
+            depcache restore "$dir"
             echo "::endgroup::"
-          done < <(find . -name Cargo.toml -not -path './.git/*' -not -path '*/target/*')
+            echo "::group::mix — $dir"
+            get_log=$(mktemp)
+            (cd "$dir" && mix deps.get) 2>&1 | tee "$get_log"
+            fetched=$(grep -cE '^(\* )?(Fetching|Downloading)|^New: ' "$get_log" || true)
+            comp_log=$(mktemp)
+            (cd "$dir" && mix deps.compile) 2>&1 | tee "$comp_log"
+            recompiled=$(grep -c '^==> ' "$comp_log" || true)
+            {
+              echo "### Elixir ($dir)"
+              echo
+              echo "| lignes de téléchargement hex | dépendances recompilées (==>) |"
+              echo "|---|---|"
+              echo "| $fetched | $recompiled |"
+              echo
+            } >> "$summary"
+            (
+              cd "$dir"
+              mix format --check-formatted
+              if grep -qE '\{:credo[,}]' mix.exs; then mix credo --strict; fi
+              mix test
+              # Intégration de sortie : exclue de `mix test` ; lancée seulement si le projet en porte (sinon rien n'est exécuté).
+              if grep -rqE ':integration' test 2>/dev/null; then mix test --only integration; fi
+            )
+            echo "::endgroup::"
+            # Sauvegarde seulement si le projet est vert (set -e).
+            echo "::group::cache deps/ et _build — sauvegarde ($dir)"
+            depcache save "$dir"
+            echo "::endgroup::"
+          done
 
       # Version de Node demandée par le dépôt (A13-P3) : `.nvmrc`, puis `.node-version`, puis
       # `engines.node` du package.json racine ; 22 par défaut (Node de l'image). Aucune action si
@@ -716,9 +856,9 @@ jobs:
             # Workers vitest (A12-P7). Certains dépôts figent `maxWorkers: 1` sous CI (cosmo :
             # « runners 1 vCPU »), d'où ~1,3 cœur utilisé sur 8 vCPU pendant toute la phase test
             # (un seul paquet @cosmo/core : plus de 40 min). Les paquets tournent `P` à la fois
-            # (P = min(paquets avec test, vCPU)) ; chacun reçoit `--maxWorkers=vCPU/P`, ce qui
-            # remplit la cellule sans la dépasser. Seulement si TOUS les scripts `test` des
-            # paquets du lot sont du vitest (≥ 3.2, option --maxWorkers) et que les tests ne sont
+            # (P = min(paquets avec test, vCPU)) ; chacun reçoit `--maxWorkers=⌈2·vCPU/P⌉` (au plus
+            # vCPU), pour que les derniers paquets en cours gardent plusieurs workers. Seulement si
+            # TOUS les scripts `test` des paquets du lot sont du vitest (≥ 3.2, option --maxWorkers) et que les tests ne sont
             # pas séquentiels (base partagée : un seul worker par paquet comme avant).
             vitest_args=()
             if [ "${SEQ_TESTS:-false}" != true ]; then
@@ -735,7 +875,13 @@ jobs:
                         END { print t, ok }')
                 if [ "${n_tests:-0}" -ge 1 ] && [ "${all_vitest:-0}" -eq 1 ]; then
                   pool=$n_tests; [ "$pool" -le "$test_workers" ] || pool=$test_workers
-                  per=$((workers / pool)); [ "$per" -le 8 ] || per=8
+                  # Sursouscription x2 arrondie au-dessus : workers/pool en division entière donnait
+                  # 1 dès que pool > vCPU/2 (5 paquets sur 8 vCPU), donc la config du dépôt
+                  # (maxWorkers: 1) ; les gros paquets finissaient seuls sur 1 cœur (uikit 43 min,
+                  # hôte inactif à 75 %). Plafonds : vCPU de la cellule, et 8.
+                  per=$(((2 * workers + pool - 1) / pool))
+                  [ "$per" -le "$workers" ] || per=$workers
+                  [ "$per" -le 8 ] || per=8
                   if [ "$per" -gt 1 ]; then vitest_args=("--maxWorkers=$per"); fi
                 fi
               fi

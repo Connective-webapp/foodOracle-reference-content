@@ -15,7 +15,7 @@ gabarit: editoriale
 sommaire: true
 image: null
 mots_cles:
-  - cuisinopedia
+  - foodoracle
   - encyclopédie culinaire
   - fiches cuisine
   - CONNECTIVE

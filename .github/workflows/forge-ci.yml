@@ -23,6 +23,14 @@ on:
         type: string
         required: false
         default: dev
+      rust_strict:
+        description: >-
+          Rust strict (A22-P72) : workspaces Cargo imbriqués détectés sans `.forge.toml`, `cargo clippy
+          --all-targets` et tests de documentation après nextest. Faux par défaut : comportement inchangé
+          pour les autres dépôts. Toujours actif pour le dépôt `CONNECTIVE-AI-AGENCY/ci`.
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -47,7 +55,21 @@ jobs:
         env:
           BASE: ${{ inputs.base }}
           HEAD: ${{ inputs.ref }}
+          # TRANSITOIRE : contournement par nom de dépôt, s'efface dès qu'un `.forge.toml` déclare `workspaces_imbriques` (A22-P91).
+          # Même test dans l'env du job `shard` ci-dessous.
+          RUST_STRICT: ${{ inputs.rust_strict || github.repository == 'CONNECTIVE-AI-AGENCY/ci' }}
         run: |
+          # Rust strict (A22-P72) : le dépôt `ci` n'a pas de Cargo.toml à la racine (workspace dans `forge/`) et
+          # pas de `.forge.toml` : sans `[rust] workspaces_imbriques = true`, forge-plan ne voyait aucun paquet
+          # Rust, donc ni `cargo test` ni `cargo clippy`. La copie de travail du plan seule est complétée
+          # (jamais commitée) ; un `workspaces_imbriques` déjà écrit par le dépôt est respecté.
+          if [ "$RUST_STRICT" = true ] && ! grep -Eq '^[[:space:]]*workspaces_imbriques[[:space:]]*=' .forge.toml 2>/dev/null; then
+            if grep -Eq '^\[rust\][[:space:]]*$' .forge.toml 2>/dev/null; then
+              sed -i '/^\[rust\][[:space:]]*$/a workspaces_imbriques = true' .forge.toml
+            else
+              printf '\n[rust]\nworkspaces_imbriques = true\n' >> .forge.toml
+            fi
+          fi
           # Durées mesurées par paquet (A15-P3) : écrites en fin de phase de test Node dans le cache du compte
           # (/forge/cache/timings/<propriétaire>__<dépôt>.json) ; absentes, le plan garde l'ancienne répartition.
           args=()
@@ -80,6 +102,8 @@ jobs:
       FORGE_JOB: ${{ matrix.job }}
       FORGE_AUDITS: ${{ join(matrix.audits, ' ') }}
       FORGE_BASE: ${{ inputs.base }}
+      # Rust strict (A22-P72) : voir l'entrée `rust_strict`.
+      RUST_STRICT: ${{ inputs.rust_strict || github.repository == 'CONNECTIVE-AI-AGENCY/ci' }}
     steps:
       # Historique complet (A13-P7) : des tests lisent d'anciens commits (`git archive <sha>`, gardes de
       # compatibilité) ; un checkout superficiel les rend introuvables. Les objets viennent du miroir local.
@@ -539,7 +563,18 @@ jobs:
           dep_rebuilt=$(count false false)
           own_rebuilt=$(count false true)
           echo "artefacts : dépendances fresh:true=$dep_fresh, fresh:false=$dep_rebuilt ; membres fresh:false=$own_rebuilt"
-          (cd "$dir" && "${test[@]}" "${flags[@]}" && cargo clippy "${flags[@]}" -- -D warnings)
+          # Rust strict (A22-P72) : clippy sur toutes les cibles (tests lib et d'intégration, exemples, benchs),
+          # que `cargo clippy -p` seul ne vérifie pas ; nextest n'exécute pas les tests de documentation.
+          clippy=(cargo clippy "${flags[@]}")
+          if [ "${RUST_STRICT:-false}" = true ]; then clippy+=(--all-targets); fi
+          (cd "$dir" && "${test[@]}" "${flags[@]}")
+          if [ "${RUST_STRICT:-false}" = true ] && [ "${test[1]}" = nextest ]; then
+            # `cargo test --doc` échoue si aucun paquet du lot n'a de bibliothèque : lot de binaires seuls ignoré.
+            libs=$(cd "$dir" && cargo metadata --no-deps --format-version 1 | jq --argjson sel "$(printf '%s\n' "${PACKAGES}" | tr ' ' '\n' | sed 's/^.*://' | jq -R . | jq -sc .)" \
+              '[.packages[] | select(.name as $n | $sel | index($n)) | select(any(.targets[].kind[]; . == "lib" or . == "rlib" or . == "proc-macro"))] | length')
+            if [ "$libs" -gt 0 ]; then (cd "$dir" && cargo test --doc "${flags[@]}"); fi
+          fi
+          (cd "$dir" && "${clippy[@]}" -- -D warnings)
           echo "::endgroup::"
           {
             echo "### Rust ($dir)"

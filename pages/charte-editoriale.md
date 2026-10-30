@@ -4,9 +4,9 @@ slug: charte-editoriale
 titre: Charte éditoriale et méthodologie
 description: Comment FoodOracle construit ses fiches, quelles données sont calculées par le code, quel rôle joue l'IA, et comment les erreurs sont corrigées.
 langue: fr
-statut: brouillon
-publie_le: null
-modifie_le: 2026-10-23T00:00:00+02:00
+statut: publie
+publie_le: "2026-10-30T09:00:00+01:00"
+modifie_le: 2026-10-30T09:00:00+01:00
 auteur: fabrizio-guerrini
 relu_par: null
 relu_le: null
@@ -87,7 +87,7 @@ Une erreur peut être signalée par la page [contact](/contact/). Une correction
 
 ## Indépendance
 
-FoodOracle ne publie pas de contenu contre rémunération sans le signaler. [RÈGLES DE PARTENARIAT ET DE PUBLICITÉ À CONFIRMER PAR LA DIRECTION] Le site ne vend pas de données et n'affiche aucune publicité à la date de cette charte. [À CONFIRMER AVANT PUBLICATION]
+FoodOracle ne publie aucun contenu contre rémunération. Si un partenariat était un jour conclu, il serait signalé comme tel sur le contenu concerné. Le site ne vend pas de données et n'affiche aucune publicité à la date de cette charte.
 
 ## Évolution de la charte
 

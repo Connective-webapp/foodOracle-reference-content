@@ -4,9 +4,9 @@ slug: confidentialite
 titre: Politique de confidentialité
 description: Données collectées par FoodOracle, pourquoi, sur quelle base, qui les reçoit, combien de temps elles sont gardées, et comment exercer vos droits.
 langue: fr
-statut: brouillon
-publie_le: null
-modifie_le: 2026-10-23T00:00:00+02:00
+statut: publie
+publie_le: "2026-10-30T09:00:00+01:00"
+modifie_le: 2026-10-30T09:00:00+01:00
 auteur: fabrizio-guerrini
 relu_par: null
 relu_le: null
@@ -27,59 +27,69 @@ Cette politique explique quelles données personnelles FoodOracle traite, pourqu
 
 ## Responsable du traitement
 
-Le responsable du traitement est CONNECTIVE, dont les coordonnées figurent dans les [mentions légales](/mentions-legales/). Pour toute question sur vos données, écrivez à [EMAIL DE CONTACT DÉDIÉ AUX DONNÉES PERSONNELLES].
+Le responsable du traitement est THE CONNECTIVE, société par actions simplifiée unipersonnelle au capital de 100 €, RCS Paris 950 796 433, dont le siège est situé 60 rue François Ier, 75008 Paris. Ses coordonnées complètes figurent dans les [mentions légales](/mentions-legales/). Pour toute question sur vos données, écrivez à contact@theconnective.fr.
 
 ## Lecture du site
 
-La consultation des pages ne demande aucun compte et ne crée aucune donnée d'identification. Le site n'utilise pas de cookie publicitaire.
+La consultation des pages ne demande aucun compte et ne crée aucune donnée d'identification. Le site n'utilise aucun cookie publicitaire et ne vend aucune donnée.
 
 ## Mesure d'audience
 
-FoodOracle mesure sa fréquentation avec Umami, un outil d'analyse que l'éditeur héberge lui-même. Umami ne dépose aucun cookie et ne suit pas les personnes d'un site à l'autre. Les données collectées sont agrégées : pages consultées, pays approximatif, type d'appareil, source de la visite. L'adresse IP n'est pas conservée sous une forme permettant de vous identifier [À VÉRIFIER SUR LA CONFIGURATION DÉPLOYÉE].
+FoodOracle mesure sa fréquentation avec Umami, un outil d'analyse que l'éditeur héberge lui-même, en France. Umami ne dépose aucun cookie et ne suit pas les personnes d'un site à l'autre. Les données collectées servent à des statistiques agrégées : pages consultées, pays approximatif, type d'appareil, source de la visite. Votre adresse IP n'est pas conservée en clair.
 
 - Finalité : mesurer la fréquentation et l'usage des pages, pour améliorer le site.
 - Base légale : intérêt légitime de l'éditeur, dans les conditions d'une mesure d'audience sans suivi.
-- Hébergement des données : en France, sur un serveur de l'éditeur.
-- Durée de conservation : [DURÉE À ARBITRER, 25 mois au maximum].
+- Durée de conservation : 25 mois au maximum, plafond recommandé par la CNIL.
 
 ## Newsletter
 
-L'inscription à la newsletter se fait en deux temps. Vous indiquez votre adresse courriel et cochez le consentement. Un courriel de confirmation vous est envoyé : l'inscription n'est définitive qu'après votre clic sur ce lien. Cette confirmation nous permet de vérifier que l'adresse vous appartient.
+L'inscription à la newsletter se fait en deux temps. Vous indiquez votre adresse courriel et cochez le consentement. Un courriel de confirmation vous est envoyé : l'inscription n'est définitive qu'après votre clic sur le lien qu'il contient, valable 48 heures et utilisable une seule fois. Une inscription non confirmée est supprimée au bout de 48 heures.
 
-- Données traitées : adresse courriel, date et heure de l'inscription, version du texte de consentement affiché, état de la confirmation.
+- Données traitées : adresse courriel, date et heure de l'inscription, version du texte de consentement affiché, méthode et source de l'inscription, état de la confirmation.
 - Finalité : vous envoyer la newsletter de FoodOracle.
 - Base légale : votre consentement (article 6.1.a du RGPD).
-- Prestataire : Brevo, qui envoie les courriels pour le compte de l'éditeur, sous contrat de sous-traitance.
-- Durée de conservation : tant que votre inscription est active. Après désinscription, l'adresse est supprimée de la liste d'envoi ; les preuves de consentement sont conservées [DURÉE DE PREUVE À ARBITRER] pour pouvoir justifier l'inscription.
+- Stockage : l'adresse est chiffrée dans la base de l'éditeur, qui l'héberge sur son propre serveur en France.
+- Envoi : les courriels partent du serveur de messagerie de l'éditeur, sans prestataire d'envoi intermédiaire.
+- Durée de conservation : tant que votre inscription est active. Après désinscription, plus aucun courriel ne vous est adressé ; l'inscription et sa preuve de consentement sont conservées cinq ans, durée de la prescription civile, pour pouvoir justifier l'inscription en cas de litige. Vous pouvez demander leur effacement avant ce terme.
 
-Chaque courriel de la newsletter contient un lien de désinscription. Un clic suffit, et la désinscription est prise en compte en moins de deux jours.
+Chaque courriel de la newsletter contient un lien de désinscription. Un clic suffit, sans écran intermédiaire, et la désinscription est prise en compte immédiatement.
 
 ## Assistant de réponse
 
-Le site propose un assistant qui répond aux questions à partir des contenus publiés. Il indique qu'il est automatisé.
+Le site propose un assistant qui répond aux questions à partir des contenus publiés. Il indique qu'il est automatisé et il peut se tromper.
 
-Les messages que vous saisissez sont transmis à un fournisseur de modèles d'intelligence artificielle pour produire la réponse. Ne saisissez aucune donnée personnelle sensible : état de santé, origine, opinions, religion, ni coordonnées. L'assistant n'en a pas besoin.
+Avant l'envoi, le site masque dans votre message les adresses courriel, les numéros de téléphone et les adresses postales. Le message masqué, les derniers échanges de la conversation, la page d'où vous écrivez et quelques extraits des contenus publiés sont ensuite transmis à OpenRouter, qui les achemine vers un modèle d'intelligence artificielle pour produire la réponse. Ne saisissez aucune donnée personnelle, en particulier de santé : l'assistant n'en a pas besoin.
 
 - Finalité : répondre à votre question.
-- Prestataire : un fournisseur de modèles d'intelligence artificielle, sous contrat de sous-traitance. [NOM DU FOURNISSEUR ET RÉGION DE TRAITEMENT À CONFIRMER]
-- Transferts hors Union européenne : [À CONFIRMER SELON LE FOURNISSEUR RETENU].
-- Durée de conservation des conversations : [DURÉE À CONFIRMER].
+- Base légale : intérêt légitime de l'éditeur à fournir ce service d'aide à la lecture, sans compte ni profilage.
+- Prestataire : OpenRouter, service d'accès à des modèles d'intelligence artificielle, et le fournisseur du modèle qui répond, qui agissent en qualité de sous-traitants.
+- Transferts hors Union européenne : le traitement par OpenRouter ou par le fournisseur du modèle peut avoir lieu hors de l'Union européenne.
+- Conservation chez l'éditeur : le contenu de vos messages n'est pas enregistré. Seuls des compteurs techniques sont tenus, sans le texte des échanges.
+- Conservation chez les prestataires : elle relève de leurs propres conditions, que l'éditeur ne maîtrise pas. C'est une raison de plus de ne rien saisir de personnel.
+
+## Limitation des abus
+
+Pour limiter les abus (inscriptions automatisées, usage excessif de l'assistant), le serveur compte les requêtes par visiteur. Votre adresse IP n'est pas utilisée telle quelle : elle est transformée en une empreinte irréversible, calculée avec un secret que seul le serveur connaît et tronquée. Cette empreinte sert uniquement à ce comptage, reste en mémoire du serveur et disparaît à son redémarrage ou une fois la fenêtre de comptage écoulée (une heure pour la newsletter, dix minutes et un jour pour l'assistant). Base légale : intérêt légitime de l'éditeur à protéger le site.
+
+## Journaux techniques
+
+Le serveur tient des journaux de fonctionnement, strictement nécessaires à la sécurité et au dépannage. Ils ne contiennent ni le texte de vos messages à l'assistant, ni les adresses courriel de la newsletter : seuls des codes d'incident et des compteurs y figurent.
 
 ## Destinataires
 
-Vos données ne sont pas vendues. Elles sont accessibles aux personnes de l'équipe qui en ont besoin, et aux sous-traitants cités ci-dessus, dans la seule mesure nécessaire à leur mission.
+Vos données ne sont pas vendues. Elles sont accessibles aux personnes de l'équipe qui en ont besoin, à l'hébergeur du site (Contabo GmbH, serveur en France), et, pour l'assistant, à OpenRouter et au fournisseur du modèle, dans la seule mesure nécessaire à leur mission.
 
 ## Vos droits
 
 Vous disposez des droits d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité, dans les conditions prévues par le RGPD. Vous pouvez retirer votre consentement à tout moment, sans que le retrait remette en cause les traitements passés.
 
-Pour exercer vos droits, écrivez à [EMAIL DE CONTACT DÉDIÉ AUX DONNÉES PERSONNELLES]. Une demande d'identité peut vous être demandée pour éviter les abus. Une réponse vous est donnée dans un délai d'un mois.
+Pour exercer vos droits, écrivez à contact@theconnective.fr. Une justification d'identité peut vous être demandée pour éviter les abus. Une réponse vous est donnée dans un délai d'un mois.
 
 Si vous estimez que vos droits ne sont pas respectés, vous pouvez saisir la Commission nationale de l'informatique et des libertés (CNIL), sur [cnil.fr](https://www.cnil.fr).
 
 ## Sécurité
 
-L'accès aux données est limité aux personnes habilitées. Les échanges avec le site passent par une connexion chiffrée.
+L'accès aux données est limité aux personnes habilitées. Les adresses de la newsletter sont chiffrées au repos, et les échanges avec le site passent par une connexion chiffrée.
 
 ## Mise à jour
 

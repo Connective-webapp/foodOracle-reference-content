@@ -46,6 +46,8 @@ Le directeur de la publication est Fabrizio Guerrini, Président de THE CONNECTI
 Le site est hébergé par :
 
 - Dénomination : Contabo GmbH, serveur situé à Lauterbourg (France), dans l'Union européenne
+- Adresse : Welfenstraße 22, 81541 Munich, Allemagne
+- Immatriculation : Amtsgericht (tribunal de première instance) de Munich, HRB 180722
 
 ## Propriété intellectuelle
 

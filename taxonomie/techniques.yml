@@ -37,6 +37,10 @@ valeurs:
     libelle: "Cuire à la vapeur"
     parent: null
     description: "Cuire un produit au contact de la vapeur sans liquide."
+  - slug: "cuire-en-cocotte"
+    libelle: "Cuire en cocotte"
+    parent: null
+    description: "Cuire un aliment à couvert dans une cocotte, à feu doux ou au four."
   - slug: "deglacer"
     libelle: "Déglacer"
     parent: null
@@ -125,6 +129,10 @@ valeurs:
     libelle: "Pocher"
     parent: null
     description: "Cuire un produit doucement dans un liquide sans ébullition."
+  - slug: "poeler"
+    libelle: "Poêler"
+    parent: null
+    description: "Cuire une pièce à la poêle dans un corps gras, en l'arrosant de temps en temps."
   - slug: "rissoler"
     libelle: "Rissoler"
     parent: null

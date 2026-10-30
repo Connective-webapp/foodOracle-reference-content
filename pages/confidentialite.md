@@ -43,14 +43,14 @@ FoodOracle mesure sa fréquentation avec Umami, un outil d'analyse que l'éditeu
 
 ## Newsletter
 
-L'inscription à la newsletter se fait en deux temps. Vous indiquez votre adresse courriel et cochez le consentement. Un courriel de confirmation vous est envoyé : l'inscription n'est définitive qu'après votre clic sur le lien qu'il contient, valable 48 heures et utilisable une seule fois. Une inscription non confirmée est supprimée au bout de 48 heures.
+L'inscription à la newsletter se fait en deux temps. Vous indiquez votre adresse courriel et cochez le consentement. Un courriel de confirmation vous est envoyé : l'inscription n'est définitive qu'après votre clic sur le lien qu'il contient, qui ouvre une page du site où vous confirmez. Ce lien est valable 48 heures et utilisable une seule fois. Une inscription non confirmée est purgée automatiquement au bout de 48 heures.
 
 - Données traitées : adresse courriel, date et heure de l'inscription, version du texte de consentement affiché, méthode et source de l'inscription, état de la confirmation.
 - Finalité : vous envoyer la newsletter de FoodOracle.
 - Base légale : votre consentement (article 6.1.a du RGPD).
 - Stockage : l'adresse est chiffrée dans la base de l'éditeur, qui l'héberge sur son propre serveur en France.
 - Envoi : les courriels partent du serveur de messagerie de l'éditeur, sans prestataire d'envoi intermédiaire.
-- Durée de conservation : tant que votre inscription est active. Après désinscription, plus aucun courriel ne vous est adressé ; l'inscription et sa preuve de consentement sont conservées cinq ans, durée de la prescription civile, pour pouvoir justifier l'inscription en cas de litige. Vous pouvez demander leur effacement avant ce terme.
+- Durée de conservation : tant que votre inscription est active. À la désinscription, votre adresse courriel est supprimée et plus aucun courriel ne vous est adressé. Seules sont conservées une empreinte salée non réversible de l'adresse et la preuve de votre consentement, pendant trois ans après la désinscription, pour pouvoir justifier l'inscription en cas de litige, puis elles sont purgées. Vous pouvez demander leur effacement avant ce terme.
 
 Chaque courriel de la newsletter contient un lien de désinscription. Un clic suffit, sans écran intermédiaire, et la désinscription est prise en compte immédiatement.
 

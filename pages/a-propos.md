@@ -4,9 +4,9 @@ slug: a-propos
 titre: À propos de FoodOracle
 description: FoodOracle est une encyclopédie culinaire éditée par CONNECTIVE. Qui la fait, pour qui, et comment les fiches sont produites.
 langue: fr
-statut: brouillon
-publie_le: null
-modifie_le: 2026-10-23T00:00:00+02:00
+statut: publie
+publie_le: "2026-10-30T09:00:00+01:00"
+modifie_le: 2026-10-30T09:00:00+01:00
 auteur: fabrizio-guerrini
 relu_par: null
 relu_le: null
@@ -36,7 +36,7 @@ Le site s'adresse aux cuisiniers amateurs, aux étudiants en hôtellerie-restaur
 
 ## Ce que le site ne fait pas
 
-FoodOracle ne remplace ni un professionnel de santé ni une étiquette alimentaire. Les allergènes et les valeurs nutritionnelles sont calculés à partir des ingrédients indiqués et restent indicatifs. Le site ne publie pas de contenu commandité, sauf mention explicite, et [ENGAGEMENT D'INDÉPENDANCE À CONFIRMER PAR LA DIRECTION].
+FoodOracle ne remplace ni un professionnel de santé ni une étiquette alimentaire. Les allergènes et les valeurs nutritionnelles sont calculés à partir des ingrédients indiqués et restent indicatifs. Le site ne publie aucun contenu commandité. Si un partenariat était un jour conclu, il serait signalé comme tel sur le contenu concerné.
 
 ## Comment le site est fait
 

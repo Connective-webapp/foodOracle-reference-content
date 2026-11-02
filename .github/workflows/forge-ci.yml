@@ -27,13 +27,18 @@ on:
         description: >-
           Rust strict (A22-P72) : workspaces Cargo imbriqués détectés sans `.forge.toml`, `cargo clippy
           --all-targets` et tests de documentation après nextest. Faux par défaut : comportement inchangé
-          pour les autres dépôts. Toujours actif pour le dépôt `CONNECTIVE-AI-AGENCY/ci`.
+          pour les autres dépôts ; le dépôt `ci` le déclare dans son `.forge.toml` (A22-P91).
         type: boolean
         required: false
         default: false
 
 permissions:
   contents: read
+
+# Porte = code pur (ci#613, A24-P42) : posé dans TOUS les jobs de porte (plan, lots standards,
+# `securite`, `job`, verdict). Les dépôts s'en servent pour sauter leurs tests variables.
+env:
+  FORGE_GATE: "1"
 
 jobs:
   plan:
@@ -55,21 +60,7 @@ jobs:
         env:
           BASE: ${{ inputs.base }}
           HEAD: ${{ inputs.ref }}
-          # TRANSITOIRE : contournement par nom de dépôt, s'efface dès qu'un `.forge.toml` déclare `workspaces_imbriques` (A22-P91).
-          # Même test dans l'env du job `shard` ci-dessous.
-          RUST_STRICT: ${{ inputs.rust_strict || github.repository == 'CONNECTIVE-AI-AGENCY/ci' }}
         run: |
-          # Rust strict (A22-P72) : le dépôt `ci` n'a pas de Cargo.toml à la racine (workspace dans `forge/`) et
-          # pas de `.forge.toml` : sans `[rust] workspaces_imbriques = true`, forge-plan ne voyait aucun paquet
-          # Rust, donc ni `cargo test` ni `cargo clippy`. La copie de travail du plan seule est complétée
-          # (jamais commitée) ; un `workspaces_imbriques` déjà écrit par le dépôt est respecté.
-          if [ "$RUST_STRICT" = true ] && ! grep -Eq '^[[:space:]]*workspaces_imbriques[[:space:]]*=' .forge.toml 2>/dev/null; then
-            if grep -Eq '^\[rust\][[:space:]]*$' .forge.toml 2>/dev/null; then
-              sed -i '/^\[rust\][[:space:]]*$/a workspaces_imbriques = true' .forge.toml
-            else
-              printf '\n[rust]\nworkspaces_imbriques = true\n' >> .forge.toml
-            fi
-          fi
           # Durées mesurées par paquet (A15-P3) : écrites en fin de phase de test Node dans le cache du compte
           # (/forge/cache/timings/<propriétaire>__<dépôt>.json) ; absentes, le plan garde l'ancienne répartition.
           args=()
@@ -103,7 +94,7 @@ jobs:
       FORGE_AUDITS: ${{ join(matrix.audits, ' ') }}
       FORGE_BASE: ${{ inputs.base }}
       # Rust strict (A22-P72) : voir l'entrée `rust_strict`.
-      RUST_STRICT: ${{ inputs.rust_strict || github.repository == 'CONNECTIVE-AI-AGENCY/ci' }}
+      RUST_STRICT: ${{ inputs.rust_strict }}
     steps:
       # Historique complet (A13-P7) : des tests lisent d'anciens commits (`git archive <sha>`, gardes de
       # compatibilité) ; un checkout superficiel les rend introuvables. Les objets viennent du miroir local.
@@ -513,7 +504,8 @@ jobs:
           [ -f "$dir/Cargo.toml" ] || { echo "::error::pas de Cargo.toml dans $dir"; exit 1; }
           summary=${GITHUB_STEP_SUMMARY:-/dev/null}
           if command -v sccache >/dev/null; then export RUSTC_WRAPPER=sccache; fi
-          if command -v cargo-nextest >/dev/null; then test=(cargo nextest run); else test=(cargo test); fi
+          # `--no-fail-fast` : tous les échecs du lot sont rapportés d'un coup (A22-P105), pas seulement le premier.
+          if command -v cargo-nextest >/dev/null; then test=(cargo nextest run --no-fail-fast); else test=(cargo test --no-fail-fast); fi
           # Noms préfixés `racine:nom` en cas de collision entre workspaces : le préfixe est retiré avant `cargo -p`.
           flags=()
           for p in $PACKAGES; do flags+=(-p "${p##*:}"); done
@@ -551,10 +543,31 @@ jobs:
           echo "::endgroup::"
           echo "::group::cargo — $dir"
           if command -v sccache >/dev/null; then sccache --zero-stats >/dev/null 2>&1 || true; fi
+          # Journal sccache (A24-P9, C84) : une ligne JSON de compteurs par exécution de l'étape, même en échec (trap EXIT).
+          # Ni chemin ni secret : instant, dépôt (`propriétaire/nom`) et compteurs numériques. Échec = avertissement.
+          sccache_journal() {
+            set +e
+            command -v sccache >/dev/null || return 0
+            journal=${SCCACHE_DIR:-/forge/cache/sccache}/journal.jsonl
+            if line=$(sccache --show-stats --stats-format json 2>/dev/null | jq -c --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg repo "${GITHUB_REPOSITORY:-}" \
+              '{ts: $ts, repo: $repo} + (.stats | with_entries(select(.value | type == "number")))
+               + {cache_hits: ((.stats.cache_hits.counts // {}) | add // 0), cache_misses: ((.stats.cache_misses.counts // {}) | add // 0)}') \
+              && [ -n "$line" ] && { printf '%s\n' "$line" >> "$journal"; } 2>/dev/null; then
+              :
+            else
+              echo "::warning::journal sccache non écrit (sccache ou journal indisponible)"
+            fi
+            return 0
+          }
+          trap sccache_journal EXIT
           members=$(cd "$dir" && cargo metadata --no-deps --format-version 1 | jq -c '[.packages[].id]')
           log=$(mktemp)
           # Construction des tests en JSON : source des « Fresh » (artefacts `fresh:false`).
           (cd "$dir" && cargo test --no-run --message-format=json "${flags[@]}") > "$log"
+          # Sauvegarde dès la compilation réussie (A24-P9, C83) : un test ou clippy rouge n'invalide pas target/.
+          echo "::group::cache target/ — sauvegarde ($dir)"
+          depcache save
+          echo "::endgroup::"
           count() { # <fresh true|false> <membre true|false>
             jq -r --argjson m "$members" --argjson f "$1" --argjson own "$2" \
               'select(.reason == "compiler-artifact" and .fresh == $f and (([.package_id] | inside($m)) == $own)) | .package_id' "$log" | sort -u | wc -l
@@ -600,10 +613,6 @@ jobs:
               } >> "$summary"
             fi
           fi
-          # Sauvegarde seulement si tout a réussi (set -e : on n'arrive ici qu'en cas de succès).
-          echo "::group::cache target/ — sauvegarde ($dir)"
-          depcache save
-          echo "::endgroup::"
 
       # Elixir (A17-P9) : un lot par projet Mix (le lot ne porte que le nom du paquet ; le dossier est retrouvé par
       # `mix.exs`). deps/ et _build sont restaurés et sauvegardés par forge-depcache ; hex, rebar3 et OTP/Elixir sont dans
@@ -656,6 +665,10 @@ jobs:
             comp_log=$(mktemp)
             (cd "$dir" && mix deps.compile) 2>&1 | tee "$comp_log"
             recompiled=$(grep -c '^==> ' "$comp_log" || true)
+            # Sauvegarde dès les dépendances compilées (A24-P9, C83) : un test rouge n'invalide pas deps/ et _build.
+            echo "::group::cache deps/ et _build — sauvegarde ($dir)"
+            depcache save "$dir"
+            echo "::endgroup::"
             {
               echo "### Elixir ($dir)"
               echo
@@ -672,10 +685,6 @@ jobs:
               # Intégration de sortie : exclue de `mix test` ; lancée seulement si le projet en porte (sinon rien n'est exécuté).
               if grep -rqE ':integration' test 2>/dev/null; then mix test --only integration; fi
             )
-            echo "::endgroup::"
-            # Sauvegarde seulement si le projet est vert (set -e).
-            echo "::group::cache deps/ et _build — sauvegarde ($dir)"
-            depcache save "$dir"
             echo "::endgroup::"
           done
 
@@ -1113,7 +1122,7 @@ jobs:
       # forge-jobenv exporte déjà BUILDX_BUILDER=forge-shared ; ici on le confirme, et on retombe sur le builder par défaut
       # (avec avertissement) si le builder n'existe pas encore dans forge-dockerd.
       - name: Builder Docker partagé (forge-shared)
-        if: matrix.ecosystem == 'job' && matrix.class == 'forge-docker'
+        if: (matrix.ecosystem == 'job' || matrix.ecosystem == 'infra') && matrix.class == 'forge-docker'
         run: |
           set -uo pipefail
           if docker buildx inspect forge-shared >/dev/null 2>&1; then
@@ -1123,6 +1132,43 @@ jobs:
             echo "BUILDX_BUILDER=" >> "$GITHUB_ENV"
             echo "::warning::builder forge-shared absent de forge-dockerd : builds sans cache partagé (forge/deploy/forge-dockerd-builder.sh)"
           fi
+
+      # Lot `infra` (A22-P87) : `forge-plan` (A22-P86) désigne les fichiers déclarés `infra` dans `[owners]`.
+      # Le plan est recalculé dans le candidat (mêmes base et tête que le job `plan`) ; chaque Dockerfile touché
+      # est construit SANS publication (ni `--push` ni `--load` : rien ne quitte le builder). Un fichier compose
+      # touché est validé par `docker compose config`. Tout échec fait échouer le lot, donc la porte.
+      - name: Build d'image (infra, sans publication)
+        if: matrix.ecosystem == 'infra'
+        env:
+          BASE: ${{ inputs.base }}
+          HEAD: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+          PLAN=$("${FORGE_PLAN_BIN:-forge-plan}" --repo . --base "origin/$BASE" --head "$HEAD" --format json) \
+            || { echo "::error::forge-plan a échoué dans le lot infra"; exit 1; }
+          mapfile -t files < <(jq -r '.infra // [] | .[]' <<<"$PLAN")
+          [ "${#files[@]}" -gt 0 ] || { echo "::error::lot infra sans fichier infra dans le plan"; exit 1; }
+          built=0
+          for f in "${files[@]}"; do
+            [[ "$f" =~ ^[A-Za-z0-9._/+-]+$ ]] && [ -f "$f" ] || { echo "fichier infra ignoré (supprimé ou nom inattendu) : $f"; continue; }
+            base_name=${f##*/}
+            case "$base_name" in
+              Dockerfile|Dockerfile.*|*.Dockerfile|*.dockerfile)
+                echo "::group::build $f"
+                docker buildx build --progress=plain --file "$f" "$(dirname "$f")" \
+                  || { echo "::error file=$f::le build d'image a échoué"; exit 1; }
+                echo "::endgroup::"
+                built=$((built + 1)) ;;
+              docker-compose*.yml|docker-compose*.yaml|compose*.yml|compose*.yaml)
+                echo "::group::compose config $f"
+                docker compose --file "$f" config --quiet \
+                  || { echo "::error file=$f::la configuration compose est invalide"; exit 1; }
+                echo "::endgroup::"
+                built=$((built + 1)) ;;
+              *) echo "fichier infra sans build associé : $f" ;;
+            esac
+          done
+          echo "$built fichier(s) d'infrastructure construit(s) ou validé(s), sans publication"
 
       - name: Job spécifique (.forge.toml)
         if: matrix.ecosystem == 'job'

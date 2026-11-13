@@ -6,7 +6,7 @@ description: FoodOracle est une encyclopédie culinaire éditée par CONNECTIVE.
 langue: fr
 statut: publie
 publie_le: "2026-10-30T09:00:00+01:00"
-modifie_le: 2026-11-13T17:41:14+01:00
+modifie_le: 2026-11-13T19:24:28+01:00
 auteur: fabrizio-guerrini
 relu_par: null
 relu_le: null
@@ -26,7 +26,7 @@ FoodOracle est une encyclopédie culinaire en français. Elle rassemble des rece
 
 ## Qui publie le site ?
 
-FoodOracle est édité par CONNECTIVE. CONNECTIVE conçoit des outils pour les restaurants et les cuisines professionnelles, notamment pour le suivi des coûts et des marges. FoodOracle est un projet distinct : il ne vend rien et ne demande aucun compte pour être consulté.
+FoodOracle est édité par CONNECTIVE. CONNECTIVE conçoit des outils pour les restaurants et les cuisines professionnelles, notamment pour le suivi des coûts et des marges. FoodOracle se consulte sans compte et ne vend rien lui-même. Il sert aussi à faire connaître le logiciel de CONNECTIVE : certaines pages portent un encart signalé « Communication de CONNECTIVE, éditeur de FoodOracle », qui renvoie vers www.theconnective.fr.
 
 Les informations légales sur l'éditeur, le directeur de la publication et l'hébergeur figurent dans les [mentions légales](/mentions-legales/).
 
@@ -36,7 +36,7 @@ Le site s'adresse aux cuisiniers amateurs, aux étudiants en hôtellerie-restaur
 
 ## Ce que le site ne fait pas
 
-FoodOracle ne remplace ni un professionnel de santé ni une étiquette alimentaire. Les allergènes et les valeurs nutritionnelles sont calculés à partir des ingrédients indiqués et restent indicatifs. Le site ne publie aucun contenu commandité. Si un partenariat était un jour conclu, il serait signalé comme tel sur le contenu concerné.
+FoodOracle ne remplace ni un professionnel de santé ni une étiquette alimentaire. Les allergènes et les valeurs nutritionnelles sont calculés à partir des ingrédients indiqués et restent indicatifs. Le site ne publie aucun contenu commandité par un tiers. Si un partenariat était un jour conclu, il serait signalé comme tel sur le contenu concerné. Les seuls messages promotionnels du site sont ceux de son éditeur, signalés comme tels et placés hors du texte des fiches et des articles.
 
 ## Comment le site est fait
 

@@ -67,15 +67,9 @@ Un contenu qui échoue à un contrôle n'est pas publié. Le contrôle ne corrig
 
 Les textes sont rédigés avec l'aide d'un modèle d'IA, à partir de règles d'écriture et de modèles de fiche. Le modèle ne calcule aucun chiffre et ne produit pas le balisage final de la page : ces tâches relèvent du code.
 
-Chaque contenu indique son niveau d'assistance :
-
-- « aucune » : contenu rédigé sans IA ;
-- « assistée » : rédigé avec l'aide d'une IA, puis contrôlé par le code ;
-- « générée » : produit par une IA, sans relecture humaine nommée.
-
 Le libellé « relu par la rédaction » n'apparaît qu'après une relecture humaine réelle, avec le nom ou l'équipe qui l'a faite et la date. Aucune relecture n'est affichée par défaut.
 
-Conformément à l'article 50 du règlement européen sur l'intelligence artificielle, un texte publié pour informer le public sur une question d'intérêt général porte la mention de son origine assistée par IA.
+Les contenus sont publiés sous la responsabilité éditoriale du directeur de la publication.
 
 Le chat du site répond à partir des contenus publiés. Il indique qu'il est automatisé, et il peut se tromper. Il ne demande aucune donnée personnelle.
 

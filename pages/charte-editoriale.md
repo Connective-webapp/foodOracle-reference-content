@@ -6,7 +6,7 @@ description: Comment FoodOracle construit ses fiches, quelles données sont calc
 langue: fr
 statut: publie
 publie_le: "2026-10-30T09:00:00+01:00"
-modifie_le: 2026-10-30T09:00:00+01:00
+modifie_le: 2026-11-13T19:24:28+01:00
 auteur: fabrizio-guerrini
 relu_par: null
 relu_le: null
@@ -81,7 +81,7 @@ Une erreur peut être signalée par la page [contact](/contact/). Une correction
 
 ## Indépendance
 
-FoodOracle ne publie aucun contenu contre rémunération. Si un partenariat était un jour conclu, il serait signalé comme tel sur le contenu concerné. Le site ne vend pas de données et n'affiche aucune publicité à la date de cette charte.
+FoodOracle ne publie aucun contenu contre rémunération. Si un partenariat était un jour conclu avec un tiers, il serait signalé comme tel sur le contenu concerné. Le site ne vend pas de données et n'affiche aucune publicité de tiers. FoodOracle est édité par CONNECTIVE, qui fait un logiciel de marge et de food cost pour les restaurants, et le site sert aussi à le faire connaître. Certaines pages portent pour cela un encart de l'éditeur. Il est signalé par la mention « Communication de CONNECTIVE, éditeur de FoodOracle », placé à l'écart du texte, et limité à un par page. Les fiches et les articles ne sont pas écrits pour ces encarts : chaque page répond d'abord à sa question, et les calculs y sont donnés en entier.
 
 ## Évolution de la charte
 

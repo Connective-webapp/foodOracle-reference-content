@@ -45,3 +45,7 @@ Les contenus sont produits avec l'aide d'outils d'intelligence artificielle, pui
 ## Qui est responsable du contenu ?
 
 La responsabilité éditoriale est assumée par le directeur de la publication, [Fabrizio Guerrini](/auteurs/fabrizio-guerrini/), chef et fondateur de CONNECTIVE. Pour joindre l'équipe, voir la page [contact](/contact/).
+
+## Partenaires
+
+Donnée propulsée par [Hémicycle.ai](https://hemicycle.ai). Hémicycle fournit à FoodOracle des données publiques françaises lues à la source, comme les textes de Légifrance, les séries de l'INSEE, le marché du travail et les travaux du Parlement, que la rédaction cite avec leur source.

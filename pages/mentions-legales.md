@@ -6,7 +6,7 @@ description: Éditeur, directeur de la publication et hébergeur du site FoodOra
 langue: fr
 statut: publie
 publie_le: "2026-10-30T09:00:00+01:00"
-modifie_le: 2026-10-30T09:00:00+01:00
+modifie_le: 2026-11-15T12:00:00+01:00
 auteur: fabrizio-guerrini
 relu_par: null
 relu_le: null
@@ -52,6 +52,8 @@ Le site est hébergé par :
 ## Propriété intellectuelle
 
 Les textes, les fiches, la structure et les graphismes de FoodOracle sont protégés par le droit d'auteur. Les images sont utilisées avec leur licence, indiquée sur chaque page qui les porte. Toute reproduction intégrale d'une fiche, hors citation courte avec mention de la source, nécessite l'accord de l'éditeur.
+
+Certaines images et certains textes de FoodOracle sont produits avec l'aide d'outils d'intelligence artificielle, puis relus et vérifiés avant publication.
 
 Le nom FoodOracle et le logo sont la propriété de THE CONNECTIVE.
 

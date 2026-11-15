@@ -2,11 +2,11 @@
 id: 01M5MQ4T8W00FJM7R527SJ75QE
 slug: charte-editoriale
 titre: Charte éditoriale et méthodologie
-description: Comment FoodOracle construit ses fiches, quelles données sont calculées par le code, quel rôle joue l'IA, et comment les erreurs sont corrigées.
+description: Comment FoodOracle construit ses fiches, quelles données sont calculées par le code, comment le contenu est relu, et comment les erreurs sont corrigées.
 langue: fr
 statut: publie
 publie_le: "2026-10-30T09:00:00+01:00"
-modifie_le: 2026-11-13T19:24:28+01:00
+modifie_le: 2026-11-15T12:00:00+01:00
 auteur: fabrizio-guerrini
 relu_par: null
 relu_le: null
@@ -17,7 +17,6 @@ image: null
 mots_cles:
   - charte éditoriale
   - méthodologie
-  - intelligence artificielle
   - table Ciqual
   - allergènes
 noindex: false
@@ -33,7 +32,7 @@ Chaque fiche porte une date de publication et une date de modification. La date 
 
 ## Ce que le code calcule
 
-Certains chiffres ne sont jamais écrits par une personne ni par le modèle d'IA. Le code les calcule à partir des ingrédients et des quantités :
+Certains chiffres ne sont jamais écrits à la main. Le code les calcule à partir des ingrédients et des quantités :
 
 - le coût matière et le coût par portion, à partir des prix d'achat saisis ;
 - le rendement, à partir des pertes déclarées ;
@@ -63,9 +62,9 @@ Avant qu'un contenu soit publié, un contrôle automatique vérifie notamment :
 
 Un contenu qui échoue à un contrôle n'est pas publié. Le contrôle ne corrige pas silencieusement : il refuse, et l'erreur est corrigée à la source.
 
-## Usage de l'intelligence artificielle
+## Relecture et responsabilité
 
-Les textes sont rédigés avec l'aide d'un modèle d'IA, à partir de règles d'écriture et de modèles de fiche. Le modèle ne calcule aucun chiffre et ne produit pas le balisage final de la page : ces tâches relèvent du code.
+Les textes suivent des règles d'écriture et des modèles de fiche. Aucun chiffre n'est calculé à la main et le balisage final de la page est produit par le code.
 
 Le libellé « relu par la rédaction » n'apparaît qu'après une relecture humaine réelle, avec le nom ou l'équipe qui l'a faite et la date. Aucune relecture n'est affichée par défaut.
 

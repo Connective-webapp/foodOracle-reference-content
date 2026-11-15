@@ -6,7 +6,7 @@ description: FoodOracle est une encyclopédie culinaire éditée par CONNECTIVE.
 langue: fr
 statut: publie
 publie_le: "2026-10-30T09:00:00+01:00"
-modifie_le: 2026-11-13T19:24:28+01:00
+modifie_le: 2026-11-15T12:00:00+01:00
 auteur: fabrizio-guerrini
 relu_par: null
 relu_le: null
@@ -40,7 +40,7 @@ FoodOracle ne remplace ni un professionnel de santé ni une étiquette alimentai
 
 ## Comment le site est fait
 
-Les contenus sont produits avec l'aide d'outils d'intelligence artificielle, puis vérifiés selon des règles écrites. La [charte éditoriale](/charte-editoriale/) décrit ces règles : ce qui est calculé par le code, ce qui est relu par une personne, et la manière dont une erreur est signalée et corrigée.
+Les contenus sont vérifiés selon des règles écrites. La [charte éditoriale](/charte-editoriale/) décrit ces règles : ce qui est calculé par le code, ce qui est relu par une personne, et la manière dont une erreur est signalée et corrigée.
 
 ## Qui est responsable du contenu ?
 
